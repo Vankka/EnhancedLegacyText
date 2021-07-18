@@ -1,0 +1,106 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'org.cadixdev.licenser' version '0.6.0'
+}
+
+group 'dev.vankka'
+version '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    api 'net.kyori:adventure-api:4.8.1'
+    implementation 'net.kyori:adventure-text-serializer-legacy:4.8.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    finalizedBy licenseFormat
+}
+
+license {
+    header = rootProject.file('LICENSE_HEADER')
+    properties {
+        String inception = '2021'
+        String currentYear = Calendar.getInstance().get(Calendar.YEAR)
+
+        year = inception == currentYear ? currentYear : inception + "-" + currentYear
+    }
+    include '**/*.java' // only java files
+}
+
+if (System.getenv('SONATYPE_KEY') == null && !project.hasProperty("signing.keyId")) {
+    // Don't even bother with signing/publishing if neither of these are set
+    return
+}
+
+task publishProject {
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+
+    dependsOn tasks.build
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+
+                pom {
+                    name = project.name
+                    packaging = 'jar'
+                    description = 'An alternative input format for Adventure'
+                    url = 'https://github.com/Vankka/EnhancedLegacyText'
+
+                    scm {
+                        connection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
+                        developerConnection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
+                        url = 'https://github.com/Vankka/DependencyDownload'
+                    }
+
+                    licenses {
+                        license {
+                            name = 'MIT License'
+                            url = 'https://www.opensource.org/licenses/mit-license.php'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id = 'Vankka'
+                        }
+                    }
+                }
+            }
+        }
+
+        signing {
+            sign publishing.publications.maven
+
+            def key = System.getenv('SONATYPE_KEY')
+            if (key != null) {
+                useInMemoryPgpKeys(key, System.getenv('SONATYPE_KEY_PASS'))
+            }
+        }
+
+        repositories {
+            maven {
+                credentials {
+                    username findProperty('ossrhUsername')
+                    password findProperty('ossrhPassword')
+                }
+                url version.endsWith('-SNAPSHOT') ? 'https://s01.oss.sonatype.org/content/repositories/snapshots/' : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            }
+        }
+    }
+
+    finalizedBy publish
+}
