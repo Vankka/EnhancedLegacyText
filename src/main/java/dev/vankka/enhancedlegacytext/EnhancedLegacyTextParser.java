@@ -500,10 +500,9 @@ class EnhancedLegacyTextParser {
 
         for (Map.Entry<Pattern, Supplier<Object>> replacementEntry : replacements.entrySet()) {
             Pattern pattern = replacementEntry.getKey();
-            Object replacement = null;
 
             Matcher matcher = pattern.matcher(input);
-            while (matcher.find()) {
+            if (matcher.find()) {
                 contentBuilder.setLength(0);
                 int start = matcher.start();
                 int end = matcher.end();
@@ -526,13 +525,11 @@ class EnhancedLegacyTextParser {
                     );
                 }
 
-                if (replacement == null) {
-                    replacement = replacementEntry.getValue().get();
-                    if (replacement instanceof Color) {
-                        // Convert java.awt.Color to TextColor
-                        Color color = (Color) replacement;
-                        replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
-                    }
+                Object replacement = replacementEntry.getValue().get();
+                if (replacement instanceof Color) {
+                    // Convert java.awt.Color to TextColor
+                    Color color = (Color) replacement;
+                    replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
                 }
 
                 if (replacement instanceof TextComponent && ((TextComponent) replacement).children().isEmpty()) {
@@ -543,7 +540,7 @@ class EnhancedLegacyTextParser {
                             decorations.add(entry.getKey());
                         }
                     }
-                    builders.add(current);
+                    addIfNotEmpty(current, builders);
                     current = Component.text(textComponent.content(), textComponent.color(), decorations).toBuilder();
 
                     anyMatch = true;
@@ -556,7 +553,7 @@ class EnhancedLegacyTextParser {
 
                     anyMatch = true;
                 } else if (replacement instanceof TextFormat || replacement instanceof Style) {
-                    builders.add(current);
+                    addIfNotEmpty(current, builders);
                     current = Component.text();
 
                     newChild.set(true);
@@ -577,12 +574,12 @@ class EnhancedLegacyTextParser {
                         }
 
                         anyMatch = true;
-                        continue;
+                        break;
                     } else if (replacement instanceof TextDecoration) {
                         current.decorate((TextDecoration) replacement);
 
                         anyMatch = true;
-                        continue;
+                        break;
                     }
                     throw new IllegalStateException("Unknown TextFormat or Style: " + replacement.getClass().getName());
                 } else {
@@ -604,12 +601,13 @@ class EnhancedLegacyTextParser {
 
                     anyMatch = true;
                 }
+                break;
             }
         }
 
         if (!anyMatch) {
             if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
-                builders.add(current);
+                addIfNotEmpty(current, builders);
                 current = Component.text();
 
                 Gradient gradient = new Gradient(gradientColors, contentBuilder.length());
@@ -647,16 +645,20 @@ class EnhancedLegacyTextParser {
             current.clickEvent(clickEvent);
         }
 
+        addIfNotEmpty(current, builders);
         if (toRoot) {
-            builders.add(current);
             rootBuilder.append(collapse(builders));
             builders.clear();
 
-            return Component.text();
-        } else {
-            builders.add(current);
-            return Component.text();
         }
+        return Component.text();
+    }
+
+    private void addIfNotEmpty(TextComponent.Builder current, List<TextComponent.Builder> builders) {
+        if (current.build().equals(Component.empty())) { // Easiest way to tell
+            return;
+        }
+        builders.add(current);
     }
 
     private TextComponent.Builder collapse(List<TextComponent.Builder> builders) {
@@ -669,6 +671,6 @@ class EnhancedLegacyTextParser {
             }
             last = current;
         }
-        return last;
+        return last != null ? last : Component.text();
     }
 }
