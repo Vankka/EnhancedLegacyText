@@ -23,6 +23,11 @@ test {
     useJUnitPlatform()
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 jar {
     finalizedBy licenseFormat
 }
