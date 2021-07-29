@@ -102,8 +102,13 @@ public class EnhancedComponentBuilder {
     /**
      * Adds a replacement to the component.
      *
-     * The replacement may be any of the following:<br/>
-     * -
+     * The replacement may be any of the following:
+     * - {@link net.kyori.adventure.text.format.TextColor} (or {@link java.awt.Color})
+     * - {@link net.kyori.adventure.text.Component} ({@link net.kyori.adventure.text.TextComponent}s without children will not reset)
+     * - {@link net.kyori.adventure.text.ComponentBuilder} ({@link net.kyori.adventure.text.TextComponent.Builder}s without children will not reset)
+     * - {@link net.kyori.adventure.text.format.TextFormat}, {@link net.kyori.adventure.text.format.TextColor}
+     * - {@link net.kyori.adventure.text.format.Style}
+     * - Any {@link Object}, will be converted to a string
      *
      * @param target the regex pattern for the replacement
      * @param replacement the replacement (see possible types above)

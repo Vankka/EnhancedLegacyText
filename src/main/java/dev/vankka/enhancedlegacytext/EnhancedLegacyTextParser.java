@@ -26,6 +26,7 @@ package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.gradient.Gradient;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -549,6 +550,11 @@ class EnhancedLegacyTextParser {
                     anyMatch = true;
                 } else if (replacement instanceof Component) {
                     builders.add(Component.text().append((Component) replacement));
+                    newChild.set(false);
+
+                    anyMatch = true;
+                } else if (replacement instanceof ComponentBuilder) {
+                    builders.add(Component.text().append((ComponentBuilder<?, ?>) replacement));
                     newChild.set(false);
 
                     anyMatch = true;

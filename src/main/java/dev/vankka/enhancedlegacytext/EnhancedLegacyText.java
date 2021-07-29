@@ -80,7 +80,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the color character.
-         * The default value is <code>&</code>.
+         * The default value is {@code &}.
          *
          * @param colorChar the new color character
          * @return this builder instance, useful for chaining
@@ -95,7 +95,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Chooses if color codes reset all formatting.
-         * The default value is <code>true</code>.
+         * The default value is {@code true}.
          * @param colorResets if color codes reset all formatting
          * @return this builder instance, useful for chaining
          */
@@ -109,7 +109,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the gradient start character.
-         * The default value is <code>{</code>.
+         * The default value is {.
          *
          * @param gradientStart the new gradient start character
          * @return this builder instance, useful for chaining
@@ -124,7 +124,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the gradient delimiter character.
-         * The default value is <code>,</code>.
+         * The default value is {@code ,}.
          *
          * @param gradientDelimiter the new gradient delimiter character
          * @return this builder instance, useful for chaining
@@ -139,7 +139,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the gradient end character.
-         * The default value is <code>}</code>.
+         * The default value is }.
          *
          * @param gradientEnd the new gradient end character
          * @return this builder instance, useful for chaining
@@ -154,7 +154,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the gradient start character.
-         * The default value is <code>]</code>.
+         * The default value is {@code [}.
          *
          * @param eventStart the new event start character
          * @return this builder instance, useful for chaining
@@ -169,7 +169,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Gets the event delimiter character.
-         * The default value <code>:</code>.
+         * The default value {@code :}.
          *
          * @param eventDelimiter the new event delimiter character
          * @return this builder instance, useful for chaining
@@ -184,7 +184,7 @@ public interface EnhancedLegacyText {
 
         /**
          * Changes the event end character.
-         * The default value <code>]</code>.
+         * The default value {@code ]}.
          *
          * @param eventEnd the new event end character
          * @return this builder instance, useful for chaining
