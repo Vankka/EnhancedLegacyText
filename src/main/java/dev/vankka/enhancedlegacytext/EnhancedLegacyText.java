@@ -28,7 +28,8 @@ import net.kyori.adventure.text.Component;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("unused") // API
@@ -74,7 +75,7 @@ public interface EnhancedLegacyText {
      * @param replacements the replacements
      * @return the {@link Component} parsed from the input and replacements
      */
-    Component parse(String input, Map<Pattern, Supplier<Object>> replacements);
+    Component parse(String input, Map<Pattern, Function<Matcher, Object>> replacements);
 
     interface Builder {
 

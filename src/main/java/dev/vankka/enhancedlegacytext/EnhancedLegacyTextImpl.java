@@ -27,7 +27,8 @@ package dev.vankka.enhancedlegacytext;
 import net.kyori.adventure.text.Component;
 
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class EnhancedLegacyTextImpl implements EnhancedLegacyText {
@@ -75,7 +76,7 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
     }
 
     @Override
-    public Component parse(String input, Map<Pattern, Supplier<Object>> replacements) {
+    public Component parse(String input, Map<Pattern, Function<Matcher, Object>> replacements) {
         return EnhancedLegacyTextParser.INSTANCE.parse(
                 input,
                 replacements,

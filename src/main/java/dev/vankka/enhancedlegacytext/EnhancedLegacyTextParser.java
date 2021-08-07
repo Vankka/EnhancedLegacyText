@@ -35,7 +35,7 @@ import net.kyori.adventure.text.format.*;
 import java.awt.Color;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,7 +85,7 @@ class EnhancedLegacyTextParser {
     private EnhancedLegacyTextParser() {}
 
     @SuppressWarnings("unchecked")
-    Component parse(String input, Map<Pattern, Supplier<Object>> replacements,
+    Component parse(String input, Map<Pattern, Function<Matcher, Object>> replacements,
                     char colorChar, boolean colorResets,
                     char gradientStart, char gradientDelimiterChar, char gradientEnd,
                     char eventStart, char eventDelimiterChar, char eventEnd) {
@@ -441,7 +441,7 @@ class EnhancedLegacyTextParser {
             StringBuilder textBuilder,
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
-            Map<Pattern, Supplier<Object>> replacements,
+            Map<Pattern, Function<Matcher, Object>> replacements,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -487,7 +487,7 @@ class EnhancedLegacyTextParser {
             StringBuilder contentBuilder,
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
-            Map<Pattern, Supplier<Object>> replacements,
+            Map<Pattern, Function<Matcher, Object>> replacements,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -499,7 +499,7 @@ class EnhancedLegacyTextParser {
         String suffix = null;
         boolean anyMatch = false;
 
-        for (Map.Entry<Pattern, Supplier<Object>> replacementEntry : replacements.entrySet()) {
+        for (Map.Entry<Pattern, Function<Matcher, Object>> replacementEntry : replacements.entrySet()) {
             Pattern pattern = replacementEntry.getKey();
 
             Matcher matcher = pattern.matcher(input);
@@ -526,7 +526,7 @@ class EnhancedLegacyTextParser {
                     );
                 }
 
-                Object replacement = replacementEntry.getValue().get();
+                Object replacement = replacementEntry.getValue().apply(matcher);
                 if (replacement instanceof Color) {
                     // Convert java.awt.Color to TextColor
                     Color color = (Color) replacement;

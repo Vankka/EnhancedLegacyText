@@ -28,15 +28,28 @@ import net.kyori.adventure.text.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A helper class for creating enhanced legacy components.
+ *
+ * The replacements may be any of the following:
+ * - {@link net.kyori.adventure.text.format.TextColor} (or {@link java.awt.Color})
+ * - {@link net.kyori.adventure.text.Component} ({@link net.kyori.adventure.text.TextComponent}s without children will not reset style)
+ * - {@link net.kyori.adventure.text.ComponentBuilder} ({@link net.kyori.adventure.text.TextComponent.Builder}s without children will not reset style)
+ * - {@link net.kyori.adventure.text.format.TextFormat}, {@link net.kyori.adventure.text.format.TextColor}
+ * - {@link net.kyori.adventure.text.format.Style}
+ * - Any other {@link Object}s will be converted to strings
+ */
 @SuppressWarnings("unused") // API
 public class EnhancedComponentBuilder {
 
     private final EnhancedLegacyText enhancedLegacyText;
     private final String input;
-    private final Map<Pattern, Supplier<Object>> replacements;
+    private final Map<Pattern, Function<Matcher, Object>> replacements;
 
     protected EnhancedComponentBuilder(EnhancedLegacyText enhancedLegacyText, String input) {
         this.enhancedLegacyText = enhancedLegacyText;
@@ -48,7 +61,7 @@ public class EnhancedComponentBuilder {
      * Adds a replacement to the component.
      *
      * @param target the literal text to replace
-     * @param replacement the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
     public EnhancedComponentBuilder replace(String target, Object replacement) {
@@ -58,30 +71,30 @@ public class EnhancedComponentBuilder {
     /**
      * Adds a replacement to the component.
      *
-     * @param target the regex pattern for the replacement
-     * @param replacement the replacement
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(String target, Object replacement) {
-        return replaceAll(Pattern.compile(target), replacement);
+    public EnhancedComponentBuilder replaceAll(String regex, Object replacement) {
+        return replaceAll(Pattern.compile(regex), replacement);
     }
 
     /**
      * Adds a replacement to the component.
      *
-     * @param target the regex pattern for the replacement
-     * @param replacement the replacement
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(Pattern target, Object replacement) {
-        return replaceAll(target, () -> replacement);
+    public EnhancedComponentBuilder replaceAll(Pattern regex, Object replacement) {
+        return replaceAll(regex, () -> replacement);
     }
 
     /**
      * Adds a replacement to the component.
      *
      * @param target the literal text to replace
-     * @param replacement the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
     public EnhancedComponentBuilder replace(String target, Supplier<Object> replacement) {
@@ -91,31 +104,56 @@ public class EnhancedComponentBuilder {
     /**
      * Adds a replacement to the component.
      *
-     * @param target the regex pattern for the replacement
-     * @param replacement the replacement
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(String target, Supplier<Object> replacement) {
-        return replaceAll(Pattern.compile(target), replacement);
+    public EnhancedComponentBuilder replaceAll(String regex, Supplier<Object> replacement) {
+        return replaceAll(Pattern.compile(regex), replacement);
     }
 
     /**
      * Adds a replacement to the component.
      *
-     * The replacement may be any of the following:
-     * - {@link net.kyori.adventure.text.format.TextColor} (or {@link java.awt.Color})
-     * - {@link net.kyori.adventure.text.Component} ({@link net.kyori.adventure.text.TextComponent}s without children will not reset)
-     * - {@link net.kyori.adventure.text.ComponentBuilder} ({@link net.kyori.adventure.text.TextComponent.Builder}s without children will not reset)
-     * - {@link net.kyori.adventure.text.format.TextFormat}, {@link net.kyori.adventure.text.format.TextColor}
-     * - {@link net.kyori.adventure.text.format.Style}
-     * - Any {@link Object}, will be converted to a string
-     *
-     * @param target the regex pattern for the replacement
-     * @param replacement the replacement (see possible types above)
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(Pattern target, Supplier<Object> replacement) {
-        replacements.put(target, replacement);
+    public EnhancedComponentBuilder replaceAll(Pattern regex, Supplier<Object> replacement) {
+        return replaceAll(regex, matcher -> replacement.get());
+    }
+
+    /**
+     * Adds a replacement to the component.
+     *
+     * @param target the literal text to replace
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
+     * @return this builder instance - useful for chaining
+     */
+    public EnhancedComponentBuilder replace(String target, Function<Matcher, Object> replacement) {
+        return replaceAll(Pattern.compile(target, Pattern.LITERAL), replacement);
+    }
+
+    /**
+     * Adds a replacement to the component.
+     *
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
+     * @return this builder instance - useful for chaining
+     */
+    public EnhancedComponentBuilder replaceAll(String regex, Function<Matcher, Object> replacement) {
+        return replaceAll(Pattern.compile(regex), replacement);
+    }
+
+    /**
+     * Adds a replacement to the component.
+     *
+     * @param regex the regex pattern for the replacement
+     * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
+     * @return this builder instance - useful for chaining
+     */
+    public EnhancedComponentBuilder replaceAll(Pattern regex, Function<Matcher, Object> replacement) {
+        replacements.put(regex, replacement);
         return this;
     }
 
@@ -131,7 +169,7 @@ public class EnhancedComponentBuilder {
      * Getter for the replacements.
      * @return the replacements
      */
-    public Map<Pattern, Supplier<Object>> getReplacements() {
+    public Map<Pattern, Function<Matcher, Object>> getReplacements() {
         return replacements;
     }
 
