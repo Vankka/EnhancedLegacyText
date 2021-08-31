@@ -596,7 +596,7 @@ class EnhancedLegacyTextParser {
                             new StringBuilder().append(replaceWith).append(suffix != null ? suffix : ""),
                             builders,
                             rootBuilder,
-                            replacements,
+                            Collections.emptyMap(),
                             newChild,
                             gradientColors,
                             clickEvent,
