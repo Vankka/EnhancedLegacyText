@@ -24,10 +24,10 @@
 
 package dev.vankka.enhancedlegacytext;
 
+import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -49,12 +49,12 @@ public class EnhancedComponentBuilder {
 
     private final EnhancedLegacyText enhancedLegacyText;
     private final String input;
-    private final Map<Pattern, Function<Matcher, Object>> replacements;
+    private final List<Pair<Pattern, Function<Matcher, Object>>> replacements;
 
     protected EnhancedComponentBuilder(EnhancedLegacyText enhancedLegacyText, String input) {
         this.enhancedLegacyText = enhancedLegacyText;
         this.input = input;
-        this.replacements = new HashMap<>();
+        this.replacements = new ArrayList<>();
     }
 
     /**
@@ -153,7 +153,7 @@ public class EnhancedComponentBuilder {
      * @return this builder instance - useful for chaining
      */
     public EnhancedComponentBuilder replaceAll(Pattern regex, Function<Matcher, Object> replacement) {
-        replacements.put(regex, replacement);
+        replacements.add(new Pair<>(regex, replacement));
         return this;
     }
 
@@ -169,7 +169,7 @@ public class EnhancedComponentBuilder {
      * Getter for the replacements.
      * @return the replacements
      */
-    public Map<Pattern, Function<Matcher, Object>> getReplacements() {
+    public List<Pair<Pattern, Function<Matcher, Object>>> getReplacements() {
         return replacements;
     }
 

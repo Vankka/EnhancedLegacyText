@@ -24,9 +24,11 @@
 
 package dev.vankka.enhancedlegacytext;
 
+import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -65,7 +67,7 @@ public interface EnhancedLegacyText {
      * @return the {@link Component} parsed from the input
      */
     default Component parse(String input) {
-        return parse(input, Collections.emptyMap());
+        return parse(input, Collections.emptyList());
     }
 
     /**
@@ -75,7 +77,7 @@ public interface EnhancedLegacyText {
      * @param replacements the replacements
      * @return the {@link Component} parsed from the input and replacements
      */
-    Component parse(String input, Map<Pattern, Function<Matcher, Object>> replacements);
+    Component parse(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements);
 
     interface Builder {
 

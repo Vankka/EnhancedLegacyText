@@ -25,6 +25,7 @@
 package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.gradient.Gradient;
+import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
@@ -85,7 +86,7 @@ class EnhancedLegacyTextParser {
     private EnhancedLegacyTextParser() {}
 
     @SuppressWarnings("unchecked")
-    Component parse(String input, Map<Pattern, Function<Matcher, Object>> replacements,
+    Component parse(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements,
                     char colorChar, boolean colorResets,
                     char gradientStart, char gradientDelimiterChar, char gradientEnd,
                     char eventStart, char eventDelimiterChar, char eventEnd) {
@@ -441,7 +442,7 @@ class EnhancedLegacyTextParser {
             StringBuilder textBuilder,
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
-            Map<Pattern, Function<Matcher, Object>> replacements,
+            List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -487,7 +488,7 @@ class EnhancedLegacyTextParser {
             StringBuilder contentBuilder,
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
-            Map<Pattern, Function<Matcher, Object>> replacements,
+            List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -499,7 +500,7 @@ class EnhancedLegacyTextParser {
         String suffix = null;
         boolean anyMatch = false;
 
-        for (Map.Entry<Pattern, Function<Matcher, Object>> replacementEntry : replacements.entrySet()) {
+        for (Pair<Pattern, Function<Matcher, Object>> replacementEntry : replacements) {
             Pattern pattern = replacementEntry.getKey();
 
             Matcher matcher = pattern.matcher(input);
@@ -593,16 +594,31 @@ class EnhancedLegacyTextParser {
                     current = appendContent(
                             colorResets,
                             current,
-                            new StringBuilder().append(replaceWith).append(suffix != null ? suffix : ""),
+                            new StringBuilder(replaceWith),
                             builders,
                             rootBuilder,
-                            Collections.emptyMap(),
+                            Collections.emptyList(),
                             newChild,
                             gradientColors,
                             clickEvent,
                             hoverEvent,
                             false
                     );
+                    if (suffix != null) {
+                        current = appendContent(
+                                colorResets,
+                                current,
+                                new StringBuilder(suffix),
+                                builders,
+                                rootBuilder,
+                                replacements,
+                                newChild,
+                                gradientColors,
+                                clickEvent,
+                                hoverEvent,
+                                false
+                        );
+                    }
                     suffix = null;
 
                     anyMatch = true;
