@@ -29,6 +29,7 @@ import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.*;
@@ -128,19 +129,25 @@ class EnhancedLegacyTextParser {
                 continue;
             }
             if (event && eventType == 0) {
-                eventTypeBuffer.append(c);
-
-                String currentBuffer = eventTypeBuffer.toString();
-                if (currentBuffer.equals("click")) {
-                    eventType = 1;
-                } else if (currentBuffer.equals("hover")) {
-                    eventType = 2;
-                } else if (!"click".startsWith(currentBuffer) && !"hover".startsWith(currentBuffer)) {
-                    // Not a valid event type, add as content
-                    event = false;
-                    contentBuilder.append(eventStart).append(currentBuffer);
+                String currentBuffer = eventTypeBuffer.toString() + c;
+                if ("click".startsWith(currentBuffer) || "hover".startsWith(currentBuffer)) {
+                    if (currentBuffer.equals("click")) {
+                        eventType = 1;
+                        continue;
+                    } else if (currentBuffer.equals("hover")) {
+                        eventType = 2;
+                        continue;
+                    } else {
+                        eventTypeBuffer.append(c);
+                        continue;
+                    }
                 }
-                continue;
+
+                // Not a valid event type, add as content
+                event = false;
+                String buffer = eventTypeBuffer.toString();
+                eventTypeBuffer.setLength(0);
+                contentBuilder.append(eventStart).append(buffer);
             }
             if (c == eventEnd && event && eventDelimiter && eventValueBuffer.length() > 0) {
                 if (!newChild.get()) {
@@ -279,7 +286,7 @@ class EnhancedLegacyTextParser {
                     continue;
                 }
                 if (hex) {
-                    int index = HEX_CHARACTERS.indexOf(c);
+                    int index = HEX_CHARACTERS.indexOf(Character.toLowerCase(c));
                     if (index != -1) {
                         colorChars[currentChar] = c;
                         if (++currentChar == 6) {
@@ -671,7 +678,6 @@ class EnhancedLegacyTextParser {
         if (toRoot) {
             rootBuilder.append(collapse(builders));
             builders.clear();
-
         }
         return Component.text();
     }
