@@ -92,4 +92,25 @@ public class EnhancedLegacyTextTest {
     public void recursiveReplacementEnabledTest() {
         Assertions.assertEquals("c", recursive(RecursiveReplacement.YES));
     }
+
+    private String recursive2(RecursiveReplacement recursiveReplacement) {
+        Component component = EnhancedLegacyText.get().buildComponent("a")
+                .replace("b", "c") // b -> c
+                .replace("a", "b") // a -> b
+                .replace("b", "d") // b -> d
+                .setRecursiveReplacement(recursiveReplacement)
+                .build();
+
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    @Test
+    public void recursiveReplacementForwardTest() {
+        Assertions.assertEquals("d", recursive2(RecursiveReplacement.ONLY_FOLLOWING));
+    }
+
+    @Test
+    public void recursiveReplacementForwardRecursiveTest() {
+        Assertions.assertEquals("c", recursive2(RecursiveReplacement.YES));
+    }
 }
