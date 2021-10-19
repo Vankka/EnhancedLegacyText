@@ -29,7 +29,6 @@ import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.*;
@@ -87,10 +86,13 @@ class EnhancedLegacyTextParser {
     private EnhancedLegacyTextParser() {}
 
     @SuppressWarnings("unchecked")
-    Component parse(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-                    char colorChar, boolean colorResets,
-                    char gradientStart, char gradientDelimiterChar, char gradientEnd,
-                    char eventStart, char eventDelimiterChar, char eventEnd) {
+    Component parse(
+            String input,
+            List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            RecursiveReplacement recursiveReplacement,
+            char colorChar, boolean colorResets,
+            char gradientStart, char gradientDelimiterChar, char gradientEnd,
+            char eventStart, char eventDelimiterChar, char eventEnd) {
         TextComponent.Builder rootBuilder = Component.text();
 
         // Colors
@@ -159,6 +161,7 @@ class EnhancedLegacyTextParser {
                             builders,
                             rootBuilder,
                             replacements,
+                            recursiveReplacement,
                             newChild,
                             gradientColors,
                             null,
@@ -180,7 +183,7 @@ class EnhancedLegacyTextParser {
                         throw new IllegalStateException("Unknown hover action: " + actionKey);
                     }
                     hoverEvent = HoverEvent.hoverEvent(action,
-                            parse(value, replacements, colorChar, colorResets,
+                            parse(value, replacements, recursiveReplacement, colorChar, colorResets,
                                     gradientStart, gradientDelimiterChar, gradientEnd,
                                     // Events are not permitted here
                                     Character.MIN_VALUE, Character.MIN_VALUE, Character.MIN_VALUE));
@@ -263,6 +266,7 @@ class EnhancedLegacyTextParser {
                             builders,
                             rootBuilder,
                             replacements,
+                            recursiveReplacement,
                             newChild,
                             Collections.emptyList(),
                             clickEvent,
@@ -303,6 +307,7 @@ class EnhancedLegacyTextParser {
                                         builders,
                                         rootBuilder,
                                         replacements,
+                                        recursiveReplacement,
                                         newChild,
                                         gradientColors,
                                         clickEvent,
@@ -333,6 +338,7 @@ class EnhancedLegacyTextParser {
                                     builders,
                                     rootBuilder,
                                     replacements,
+                                    recursiveReplacement,
                                     newChild,
                                     gradientColors,
                                     clickEvent,
@@ -359,6 +365,7 @@ class EnhancedLegacyTextParser {
                                             builders,
                                             rootBuilder,
                                             replacements,
+                                            recursiveReplacement,
                                             newChild,
                                             gradientColors,
                                             clickEvent,
@@ -377,6 +384,7 @@ class EnhancedLegacyTextParser {
                                             builders,
                                             rootBuilder,
                                             replacements,
+                                            recursiveReplacement,
                                             newChild,
                                             gradientColors,
                                             clickEvent,
@@ -430,6 +438,7 @@ class EnhancedLegacyTextParser {
                 builders,
                 rootBuilder,
                 replacements,
+                recursiveReplacement,
                 newChild,
                 gradientColors,
                 clickEvent,
@@ -450,6 +459,7 @@ class EnhancedLegacyTextParser {
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            RecursiveReplacement recursiveReplacement,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -463,6 +473,7 @@ class EnhancedLegacyTextParser {
                     builders,
                     rootBuilder,
                     replacements,
+                    recursiveReplacement,
                     newChild,
                     gradientColors,
                     clickEvent,
@@ -478,6 +489,7 @@ class EnhancedLegacyTextParser {
                     builders,
                     rootBuilder,
                     replacements,
+                    recursiveReplacement,
                     newChild,
                     gradientColors,
                     clickEvent,
@@ -496,6 +508,7 @@ class EnhancedLegacyTextParser {
             List<TextComponent.Builder> builders,
             TextComponent.Builder rootBuilder,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            RecursiveReplacement recursiveReplacement,
             AtomicBoolean newChild,
             List<TextColor> gradientColors,
             ClickEvent clickEvent,
@@ -507,7 +520,8 @@ class EnhancedLegacyTextParser {
         String suffix = null;
         boolean anyMatch = false;
 
-        for (Pair<Pattern, Function<Matcher, Object>> replacementEntry : replacements) {
+        for (int i = 0; i < replacements.size(); i++) {
+            Pair<Pattern, Function<Matcher, Object>> replacementEntry = replacements.get(i);
             Pattern pattern = replacementEntry.getKey();
 
             Matcher matcher = pattern.matcher(input);
@@ -526,6 +540,7 @@ class EnhancedLegacyTextParser {
                             builders,
                             rootBuilder,
                             replacements,
+                            recursiveReplacement,
                             newChild,
                             gradientColors,
                             clickEvent,
@@ -598,13 +613,34 @@ class EnhancedLegacyTextParser {
                     throw new IllegalStateException("Unknown TextFormat or Style: " + replacement.getClass().getName());
                 } else {
                     String replaceWith = String.valueOf(replacement);
+
+                    List<Pair<Pattern, Function<Matcher, Object>>> newReplacements;
+                    switch (recursiveReplacement) {
+                        default:
+                        case NO:
+                            newReplacements = Collections.emptyList();
+                            break;
+                        case YES:
+                            newReplacements = replacements;
+                            break;
+                        case ONLY_FOLLOWING:
+                            int size = replacements.size();
+                            if (size == i + 1) {
+                                newReplacements = Collections.emptyList();
+                            } else {
+                                newReplacements = replacements.subList(i + 1, size);
+                            }
+                            break;
+                    }
+
                     current = appendContent(
                             colorResets,
                             current,
                             new StringBuilder(replaceWith),
                             builders,
                             rootBuilder,
-                            Collections.emptyList(),
+                            newReplacements,
+                            recursiveReplacement,
                             newChild,
                             gradientColors,
                             clickEvent,
@@ -619,6 +655,7 @@ class EnhancedLegacyTextParser {
                                 builders,
                                 rootBuilder,
                                 replacements,
+                                recursiveReplacement,
                                 newChild,
                                 gradientColors,
                                 clickEvent,
@@ -659,6 +696,7 @@ class EnhancedLegacyTextParser {
                     builders,
                     rootBuilder,
                     replacements,
+                    recursiveReplacement,
                     newChild,
                     gradientColors,
                     clickEvent,

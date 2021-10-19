@@ -26,9 +26,9 @@ package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,10 +78,15 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
     }
 
     @Override
-    public Component parse(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements) {
+    public @NotNull Component parse(
+            @NotNull String input,
+            @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            @NotNull RecursiveReplacement recursiveReplacement
+    ) {
         return EnhancedLegacyTextParser.INSTANCE.parse(
                 input,
                 replacements,
+                recursiveReplacement,
                 colorChar,
                 colorResets,
                 gradientStart,

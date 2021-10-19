@@ -26,10 +26,10 @@ package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,7 +67,7 @@ public interface EnhancedLegacyText {
      * @return the {@link Component} parsed from the input
      */
     default Component parse(String input) {
-        return parse(input, Collections.emptyList());
+        return parse(input, Collections.emptyList(), RecursiveReplacement.NO);
     }
 
     /**
@@ -75,9 +75,15 @@ public interface EnhancedLegacyText {
      *
      * @param input the input text
      * @param replacements the replacements
+     * @param recursiveReplacement the recursive replacement policy
      * @return the {@link Component} parsed from the input and replacements
      */
-    Component parse(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements);
+    @NotNull
+    Component parse(
+            @NotNull String input,
+            @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            @NotNull RecursiveReplacement recursiveReplacement
+    );
 
     interface Builder {
 

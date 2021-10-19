@@ -12,11 +12,12 @@ repositories {
 }
 
 dependencies {
-    api 'net.kyori:adventure-api:4.8.1'
-    implementation 'net.kyori:adventure-text-serializer-legacy:4.8.1'
+    api 'net.kyori:adventure-api:4.9.2'
+    implementation 'net.kyori:adventure-text-serializer-legacy:4.9.2'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'net.kyori:adventure-text-serializer-plain:4.9.2'
 }
 
 test {

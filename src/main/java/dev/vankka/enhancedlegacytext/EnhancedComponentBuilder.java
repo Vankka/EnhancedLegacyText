@@ -26,6 +26,7 @@ package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.function.Function;
@@ -50,6 +51,7 @@ public class EnhancedComponentBuilder {
     private final EnhancedLegacyText enhancedLegacyText;
     private final String input;
     private final List<Pair<Pattern, Function<Matcher, Object>>> replacements;
+    private RecursiveReplacement recursiveReplacement = RecursiveReplacement.ONLY_FOLLOWING;
 
     protected EnhancedComponentBuilder(EnhancedLegacyText enhancedLegacyText, String input) {
         this.enhancedLegacyText = enhancedLegacyText;
@@ -130,7 +132,8 @@ public class EnhancedComponentBuilder {
      * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replace(String target, Function<Matcher, Object> replacement) {
+    @NotNull
+    public EnhancedComponentBuilder replace(@NotNull String target, @NotNull Function<Matcher, Object> replacement) {
         return replaceAll(Pattern.compile(target, Pattern.LITERAL), replacement);
     }
 
@@ -141,7 +144,8 @@ public class EnhancedComponentBuilder {
      * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(String regex, Function<Matcher, Object> replacement) {
+    @NotNull
+    public EnhancedComponentBuilder replaceAll(@NotNull String regex, @NotNull Function<Matcher, Object> replacement) {
         return replaceAll(Pattern.compile(regex), replacement);
     }
 
@@ -152,7 +156,8 @@ public class EnhancedComponentBuilder {
      * @param replacement the replacement (see {@link EnhancedComponentBuilder} for possible replacements)
      * @return this builder instance - useful for chaining
      */
-    public EnhancedComponentBuilder replaceAll(Pattern regex, Function<Matcher, Object> replacement) {
+    @NotNull
+    public EnhancedComponentBuilder replaceAll(@NotNull Pattern regex, @NotNull Function<Matcher, Object> replacement) {
         replacements.add(new Pair<>(regex, replacement));
         return this;
     }
@@ -161,6 +166,7 @@ public class EnhancedComponentBuilder {
      * Getter for the input text.
      * @return the input text
      */
+    @NotNull
     public String getInput() {
         return input;
     }
@@ -169,8 +175,27 @@ public class EnhancedComponentBuilder {
      * Getter for the replacements.
      * @return the replacements
      */
+    @NotNull
     public List<Pair<Pattern, Function<Matcher, Object>>> getReplacements() {
         return replacements;
+    }
+
+    /**
+     * Sets the recursive replacement policy. The default value is {@link RecursiveReplacement#ONLY_FOLLOWING}.
+     * @param replacement the recursive replacement policy
+     * @return this builder instance - useful for chaining
+     */
+    public EnhancedComponentBuilder setRecursiveReplacement(@NotNull RecursiveReplacement replacement) {
+        this.recursiveReplacement = Objects.requireNonNull(replacement);
+        return this;
+    }
+
+    /**
+     * Gets the recursive replacement policy.
+     * @return the recursive replacement policy
+     */
+    public RecursiveReplacement getRecursiveReplacement() {
+        return recursiveReplacement;
     }
 
     /**
@@ -178,7 +203,7 @@ public class EnhancedComponentBuilder {
      * @return a new {@link Component}
      */
     public Component build() {
-        return enhancedLegacyText.parse(input, replacements);
+        return enhancedLegacyText.parse(input, replacements, recursiveReplacement);
     }
 
 }

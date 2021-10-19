@@ -25,9 +25,11 @@
 package dev.vankka.enhnacedlegacytext;
 
 import dev.vankka.enhancedlegacytext.EnhancedLegacyText;
+import dev.vankka.enhancedlegacytext.RecursiveReplacement;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -69,5 +71,25 @@ public class EnhancedLegacyTextTest {
                 .build();
 
         Assertions.assertEquals(reference, component);
+    }
+
+    private String recursive(RecursiveReplacement recursiveReplacement) {
+        Component component = EnhancedLegacyText.get().buildComponent("a")
+                .replace("b", "c") // b -> c
+                .replace("a", "b") // a -> b
+                .setRecursiveReplacement(recursiveReplacement)
+                .build();
+
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    @Test
+    public void recursiveReplacementTest() {
+        Assertions.assertEquals("b", recursive(RecursiveReplacement.ONLY_FOLLOWING));
+    }
+
+    @Test
+    public void recursiveReplacementEnabledTest() {
+        Assertions.assertEquals("c", recursive(RecursiveReplacement.YES));
     }
 }
