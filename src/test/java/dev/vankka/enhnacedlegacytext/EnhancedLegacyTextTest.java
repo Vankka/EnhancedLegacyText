@@ -27,13 +27,36 @@ package dev.vankka.enhnacedlegacytext;
 import dev.vankka.enhancedlegacytext.EnhancedLegacyText;
 import dev.vankka.enhancedlegacytext.RecursiveReplacement;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class EnhancedLegacyTextTest {
+
+    @Test
+    public void hoverShowTextTest() {
+        Component reference =
+                Component.text()
+                        .content("a")
+                        .append(
+                                Component.text()
+                                        .content("b")
+                                        .hoverEvent(
+                                                HoverEvent.showText(
+                                                        Component.text("hi")
+                                                                .decorate(TextDecoration.BOLD)
+                                                )
+                                        )
+                        ).build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("a[hover:show_text:&lhi]b").build();
+
+        Assertions.assertEquals(reference, component);
+    }
 
     @Test
     public void placeholderTest() {
@@ -55,7 +78,7 @@ public class EnhancedLegacyTextTest {
     }
 
     @Test
-    public void complexTest() {
+    public void complexFormattingTest() {
         Component reference =
                 Component.text()
                         .content("Aqua ")

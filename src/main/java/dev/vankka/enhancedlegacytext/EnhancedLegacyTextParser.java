@@ -35,14 +35,12 @@ import net.kyori.adventure.text.format.*;
 
 import java.awt.Color;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class EnhancedLegacyTextParser {
+public class EnhancedLegacyTextParser extends ParserSpec {
 
-    static final EnhancedLegacyTextParser INSTANCE = new EnhancedLegacyTextParser();
     private static final String HEX_CHARACTERS = "1234567890abcdef";
     private static final Map<Character, TextFormat> FORMATS = new HashMap<>();
     private static final List<String> CLICK_ACTIONS = new ArrayList<>();
@@ -83,50 +81,54 @@ class EnhancedLegacyTextParser {
         HOVER_ACTIONS.add(HoverEvent.Action.SHOW_TEXT.toString());
     }
 
-    private EnhancedLegacyTextParser() {}
+    private final RecursiveReplacement recursiveReplacement;
+    private final char colorChar;
+    private final boolean colorResets;
+    private final char gradientStart, gradientDelimiterChar, gradientEnd;
+    private final char eventStart, eventDelimiterChar, eventEnd;
 
-    @SuppressWarnings("unchecked")
-    Component parse(
+    private ParserSpec componentCopy;
+
+    protected EnhancedLegacyTextParser(
             String input,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             RecursiveReplacement recursiveReplacement,
             char colorChar, boolean colorResets,
             char gradientStart, char gradientDelimiterChar, char gradientEnd,
-            char eventStart, char eventDelimiterChar, char eventEnd) {
-        TextComponent.Builder rootBuilder = Component.text();
+            char eventStart, char eventDelimiterChar, char eventEnd
+    ) {
+        this.recursiveReplacement = recursiveReplacement;
+        this.colorChar = colorChar;
+        this.colorResets = colorResets;
+        this.gradientStart = gradientStart;
+        this.gradientDelimiterChar = gradientDelimiterChar;
+        this.gradientEnd = gradientEnd;
+        this.eventStart = eventStart;
+        this.eventDelimiterChar = eventDelimiterChar;
+        this.eventEnd = eventEnd;
+        processPlaceholders(input, replacements);
+    }
 
-        // Colors
-        boolean format = false;
-        boolean hex = false;
-        char[] colorChars = new char[6];
-        int currentChar = 0;
+    Component out() {
+        // Append remaining content
+        appendContent(
+                contentBuilder,
+                true,
+                false,
+                false,
+                false
+        );
 
-        // Gradient
-        boolean gradient = false;
-        boolean gradientDelimiter = false;
-        List<TextColor> gradientColors = new ArrayList<>();
+        // Simplify the output component if possible
+        List<Component> rootChildren = rootBuilder.children();
+        return rootChildren.size() == 1 ? rootChildren.get(0) : rootBuilder.build();
+    }
 
-        // Events
-        boolean event = false;
-        boolean eventDelimiter = false;
-        int eventType = 0; // 0 = none, 1 = click, 2 = hover
-        StringBuilder eventTypeBuffer = new StringBuilder();
-        StringBuilder eventActionBuffer = new StringBuilder();
-        boolean eventActionFinalized = false;
-        StringBuilder eventValueBuffer = new StringBuilder();
-        ClickEvent clickEvent = null;
-        HoverEvent<?> hoverEvent = null;
-
-        // newChild = Does current have any text
-        AtomicBoolean newChild = new AtomicBoolean(true);
-
-        StringBuilder contentBuilder = new StringBuilder();
-        List<TextComponent.Builder> builders = new ArrayList<>();
-        TextComponent.Builder current = Component.text();
-
-        for (char c : input.toCharArray()) {
+    @SuppressWarnings("unchecked")
+    void parse(String parseIn) {
+        for (char c : parseIn.toCharArray()) {
             // Events
-            if (c == eventStart && !event && !format && !gradient) {
+            if (c == eventStart && !event && !format && !gradient && componentCopy == null) {
                 event = true;
                 continue;
             }
@@ -151,26 +153,20 @@ class EnhancedLegacyTextParser {
                 eventTypeBuffer.setLength(0);
                 contentBuilder.append(eventStart).append(buffer);
             }
-            if (c == eventEnd && event && eventDelimiter && eventValueBuffer.length() > 0) {
+            if (c == eventEnd && (event && eventDelimiter && (eventValueBuffer.length() > 0 || componentCopy != null))) {
                 if (!newChild.get()) {
                     // Clear up the existing text buffer first
-                    current = appendContent(
-                            colorResets,
-                            current,
+                    appendContent(
                             contentBuilder,
-                            builders,
-                            rootBuilder,
-                            replacements,
-                            recursiveReplacement,
-                            newChild,
-                            gradientColors,
-                            null,
-                            null,
-                            false
+                            false,
+                            true,
+                            false,
+                            true
                     );
                 }
 
-                String actionKey = eventActionBuffer.toString().toLowerCase(Locale.ROOT);
+                String actionKey = (componentCopy != null ? componentCopy.eventActionBuffer : eventActionBuffer)
+                        .toString().toLowerCase(Locale.ROOT);
                 String value = eventValueBuffer.toString();
                 if (eventType == 1) {
                     // Click
@@ -182,11 +178,31 @@ class EnhancedLegacyTextParser {
                     if (action == null) {
                         throw new IllegalStateException("Unknown hover action: " + actionKey);
                     }
-                    hoverEvent = HoverEvent.hoverEvent(action,
-                            parse(value, replacements, recursiveReplacement, colorChar, colorResets,
-                                    gradientStart, gradientDelimiterChar, gradientEnd,
-                                    // Events are not permitted here
-                                    Character.MIN_VALUE, Character.MIN_VALUE, Character.MIN_VALUE));
+
+                    if (actionKey.equals(HoverEvent.Action.SHOW_TEXT.toString())) {
+                        Component component = out();
+
+                        componentCopy.copyTo(this);
+                        componentCopy = null;
+
+                        appendContent(
+                                contentBuilder,
+                                false,
+                                true,
+                                false,
+                                true
+                        );
+
+                        hoverEvent = HoverEvent.hoverEvent(
+                                action,
+                                component
+                        );
+                    } else {
+                        hoverEvent = HoverEvent.hoverEvent(
+                                action,
+                                Component.text(value)
+                        );
+                    }
                 }
                 event = false;
                 eventDelimiter = false;
@@ -221,6 +237,17 @@ class EnhancedLegacyTextParser {
                         if (currentBuffer.equalsIgnoreCase(possibleValue)) {
                             eventActionFinalized = true;
                             eventDelimiter = false;
+                            if (eventType == 2 && currentBuffer.equalsIgnoreCase(HoverEvent.Action.SHOW_TEXT.toString())) {
+                                componentCopy = new Impl();
+                                copyTo(componentCopy);
+                                clear();
+
+                                event = componentCopy.event;
+                                eventType = componentCopy.eventType;
+                                eventActionBuffer = componentCopy.eventActionBuffer;
+                                eventDelimiter = componentCopy.eventDelimiter;
+                                eventActionFinalized = componentCopy.eventActionFinalized;
+                            }
                             break;
                         }
                         if (possibleValue.startsWith(currentBuffer)) {
@@ -236,10 +263,11 @@ class EnhancedLegacyTextParser {
                     eventTypeBuffer.setLength(0);
                     eventDelimiter = false;
                     eventActionBuffer.setLength(0);
-                } else {
+                    continue;
+                } else if (componentCopy == null) {
                     eventValueBuffer.append(c);
+                    continue;
                 }
-                continue;
             }
 
             // Gradient
@@ -259,18 +287,11 @@ class EnhancedLegacyTextParser {
 
                 if (!newChild.get()) {
                     // Clear up the existing text buffer first
-                    current = appendContent(
-                            colorResets,
-                            current,
+                    appendContent(
                             contentBuilder,
-                            builders,
-                            rootBuilder,
-                            replacements,
-                            recursiveReplacement,
-                            newChild,
-                            Collections.emptyList(),
-                            clickEvent,
-                            hoverEvent,
+                            false,
+                            true,
+                            true,
                             false
                     );
                 }
@@ -299,19 +320,10 @@ class EnhancedLegacyTextParser {
                                 gradientColors.add(color);
                                 gradientDelimiter = false;
                             } else {
-                                current = colorize(
+                                colorize(
                                         colorResets,
                                         color,
-                                        current,
-                                        contentBuilder,
-                                        builders,
-                                        rootBuilder,
-                                        replacements,
-                                        recursiveReplacement,
-                                        newChild,
-                                        gradientColors,
-                                        clickEvent,
-                                        hoverEvent
+                                        contentBuilder
                                 );
                             }
                         } else {
@@ -331,19 +343,12 @@ class EnhancedLegacyTextParser {
                         TextFormat textFormat = FORMATS.get(c);
                         if (textFormat == null) {
                             // Reset
-                            current = appendContent(
-                                    colorResets,
-                                    current,
+                            appendContent(
                                     contentBuilder,
-                                    builders,
-                                    rootBuilder,
-                                    replacements,
-                                    recursiveReplacement,
-                                    newChild,
-                                    gradientColors,
-                                    clickEvent,
-                                    hoverEvent,
-                                    true
+                                    true,
+                                    true,
+                                    false,
+                                    false
                             );
                             gradientColors.clear();
                             clickEvent = null;
@@ -357,19 +362,10 @@ class EnhancedLegacyTextParser {
                                     gradientDelimiter = false;
                                 } else {
                                     gradientColors.clear();
-                                    current = colorize(
+                                    colorize(
                                             colorResets,
                                             color,
-                                            current,
-                                            contentBuilder,
-                                            builders,
-                                            rootBuilder,
-                                            replacements,
-                                            recursiveReplacement,
-                                            newChild,
-                                            gradientColors,
-                                            clickEvent,
-                                            hoverEvent
+                                            contentBuilder
                                     );
                                 }
                             } else if (textFormat instanceof TextDecoration) {
@@ -377,20 +373,14 @@ class EnhancedLegacyTextParser {
                                     current.decorate((TextDecoration) textFormat);
                                 } else {
                                     gradientColors.clear();
-                                    current = appendContent(
-                                            colorResets,
-                                            current,
+                                    appendContent(
                                             contentBuilder,
-                                            builders,
-                                            rootBuilder,
-                                            replacements,
-                                            recursiveReplacement,
-                                            newChild,
-                                            gradientColors,
-                                            clickEvent,
-                                            hoverEvent,
+                                            false,
+                                            true,
+                                            false,
                                             false
-                                    ).decorate((TextDecoration) textFormat);
+                                    );
+                                    current.decorate((TextDecoration) textFormat);
                                     newChild.set(true);
                                 }
                             } else {
@@ -430,95 +420,86 @@ class EnhancedLegacyTextParser {
             newChild.set(false);
         }
 
-        // Append remaining content
-        appendContent(
-                colorResets,
-                current,
-                contentBuilder,
-                builders,
-                rootBuilder,
-                replacements,
-                recursiveReplacement,
-                newChild,
-                gradientColors,
-                clickEvent,
-                hoverEvent,
-                true
-        );
-
-        // Simplify the output component if possible
-        List<Component> rootChildren = rootBuilder.children();
-        return rootChildren.size() == 1 ? rootChildren.get(0) : rootBuilder.build();
+        if (contentBuilder.length() > 0) {
+            appendContent(contentBuilder, false, true, false, false);
+        }
     }
 
-    private TextComponent.Builder colorize(
+    private void colorize(
             boolean colorResets,
             TextColor textColor,
-            TextComponent.Builder current,
-            StringBuilder textBuilder,
-            List<TextComponent.Builder> builders,
-            TextComponent.Builder rootBuilder,
-            List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            RecursiveReplacement recursiveReplacement,
-            AtomicBoolean newChild,
-            List<TextColor> gradientColors,
-            ClickEvent clickEvent,
-            HoverEvent<?> hoverEvent
+            StringBuilder textBuilder
     ) {
         if (colorResets) {
-            current = appendContent(
-                    true,
-                    current,
+            appendContent(
                     textBuilder,
-                    builders,
-                    rootBuilder,
-                    replacements,
-                    recursiveReplacement,
-                    newChild,
-                    gradientColors,
-                    clickEvent,
-                    hoverEvent,
-                    true
+                    true,
+                    true,
+                    false,
+                    false
             );
             newChild.set(true);
         } else if (!newChild.get()) {
-            current = appendContent(
-                    false,
-                    current,
+            appendContent(
                     textBuilder,
-                    builders,
-                    rootBuilder,
-                    replacements,
-                    recursiveReplacement,
-                    newChild,
-                    gradientColors,
-                    clickEvent,
-                    hoverEvent,
+                    false,
+                    true,
+                    false,
                     false
             );
             newChild.set(true);
         }
-        return current.color(textColor);
+        current.color(textColor);
     }
 
-    private TextComponent.Builder appendContent(
-            boolean colorResets,
-            TextComponent.Builder current,
+    private void appendContent(
             StringBuilder contentBuilder,
-            List<TextComponent.Builder> builders,
-            TextComponent.Builder rootBuilder,
-            List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            RecursiveReplacement recursiveReplacement,
-            AtomicBoolean newChild,
-            List<TextColor> gradientColors,
-            ClickEvent clickEvent,
-            HoverEvent<?> hoverEvent,
-            boolean toRoot
+            boolean toRoot,
+            boolean allowEmpty,
+            boolean noGradients,
+            boolean noEvents
     ) {
-        String input = contentBuilder.toString();
+        List<TextColor> gradientColors = noGradients ? Collections.emptyList() : this.gradientColors;
+        ClickEvent clickEvent = noEvents ? null : this.clickEvent;
+        HoverEvent<?> hoverEvent = noEvents ? null : this.hoverEvent;
 
-        String suffix = null;
+        if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
+            addIfNotEmpty(current, builders);
+            current = Component.text();
+
+            Gradient gradient = new Gradient(gradientColors, contentBuilder.length());
+            char[] inputText = contentBuilder.toString().toCharArray();
+            int index = 0;
+            for (TextColor color : gradient.getColors()) {
+                char character = inputText[index++];
+                current.append(Component.text(character).color(color));
+            }
+            gradientColors.clear();
+        } else {
+            current.content(current.content() + contentBuilder);
+        }
+        contentBuilder.setLength(0);
+
+        if (hoverEvent != null) {
+            current.hoverEvent(hoverEvent);
+        }
+        if (clickEvent != null) {
+            current.clickEvent(clickEvent);
+        }
+
+        if (allowEmpty || current.content().length() > 0 || !current.children().isEmpty()) {
+            addIfNotEmpty(current, builders);
+        }
+        if (toRoot) {
+            rootBuilder.append(collapse(builders));
+            builders.clear();
+        }
+        current = Component.text();
+    }
+
+    private void processPlaceholders(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements) {
         boolean anyMatch = false;
+        String suffix = null;
 
         for (int i = 0; i < replacements.size(); i++) {
             Pair<Pattern, Function<Matcher, Object>> replacementEntry = replacements.get(i);
@@ -533,20 +514,7 @@ class EnhancedLegacyTextParser {
                 String prefix = start == 0 ? null : input.substring(0, start);
                 suffix = end == input.length() ? null : input.substring(end);
                 if (prefix != null) {
-                    current = appendContent(
-                            colorResets,
-                            current,
-                            new StringBuilder().append(prefix),
-                            builders,
-                            rootBuilder,
-                            replacements,
-                            recursiveReplacement,
-                            newChild,
-                            gradientColors,
-                            clickEvent,
-                            hoverEvent,
-                            false
-                    );
+                    processPlaceholders(prefix, replacements);
                 }
 
                 Object replacement = replacementEntry.getValue().apply(matcher);
@@ -633,38 +601,7 @@ class EnhancedLegacyTextParser {
                             break;
                     }
 
-                    current = appendContent(
-                            colorResets,
-                            current,
-                            new StringBuilder(replaceWith),
-                            builders,
-                            rootBuilder,
-                            newReplacements,
-                            recursiveReplacement,
-                            newChild,
-                            gradientColors,
-                            clickEvent,
-                            hoverEvent,
-                            false
-                    );
-                    if (suffix != null) {
-                        current = appendContent(
-                                colorResets,
-                                current,
-                                new StringBuilder(suffix),
-                                builders,
-                                rootBuilder,
-                                replacements,
-                                recursiveReplacement,
-                                newChild,
-                                gradientColors,
-                                clickEvent,
-                                hoverEvent,
-                                false
-                        );
-                    }
-                    suffix = null;
-
+                    processPlaceholders(replaceWith, newReplacements);
                     anyMatch = true;
                 }
                 break;
@@ -672,52 +609,10 @@ class EnhancedLegacyTextParser {
         }
 
         if (!anyMatch) {
-            if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
-                addIfNotEmpty(current, builders);
-                current = Component.text();
-
-                Gradient gradient = new Gradient(gradientColors, contentBuilder.length());
-                char[] inputText = contentBuilder.toString().toCharArray();
-                int index = 0;
-                for (TextColor color : gradient.getColors()) {
-                    char character = inputText[index++];
-                    current.append(Component.text(character).color(color));
-                }
-                gradientColors.clear();
-            } else {
-                current.content(current.content() + contentBuilder);
-            }
-            contentBuilder.setLength(0);
+            parse(input);
         } else if (suffix != null) {
-            current = appendContent(
-                    colorResets,
-                    current,
-                    new StringBuilder().append(suffix),
-                    builders,
-                    rootBuilder,
-                    replacements,
-                    recursiveReplacement,
-                    newChild,
-                    gradientColors,
-                    clickEvent,
-                    hoverEvent,
-                    false
-            );
+            processPlaceholders(suffix, replacements);
         }
-
-        if (hoverEvent != null) {
-            current.hoverEvent(hoverEvent);
-        }
-        if (clickEvent != null) {
-            current.clickEvent(clickEvent);
-        }
-
-        addIfNotEmpty(current, builders);
-        if (toRoot) {
-            rootBuilder.append(collapse(builders));
-            builders.clear();
-        }
-        return Component.text();
     }
 
     private void addIfNotEmpty(TextComponent.Builder current, List<TextComponent.Builder> builders) {

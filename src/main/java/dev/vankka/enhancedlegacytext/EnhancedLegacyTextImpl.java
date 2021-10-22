@@ -83,7 +83,7 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
             @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             @NotNull RecursiveReplacement recursiveReplacement
     ) {
-        return EnhancedLegacyTextParser.INSTANCE.parse(
+        return new EnhancedLegacyTextParser(
                 input,
                 replacements,
                 recursiveReplacement,
@@ -95,7 +95,7 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
                 eventStart,
                 eventDelimiter,
                 eventEnd
-        );
+        ).out();
     }
 
     static class BuilderImpl implements Builder {

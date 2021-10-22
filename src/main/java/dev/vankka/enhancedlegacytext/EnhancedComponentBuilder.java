@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  * - {@link net.kyori.adventure.text.format.TextColor} (or {@link java.awt.Color})
  * - {@link net.kyori.adventure.text.Component} ({@link net.kyori.adventure.text.TextComponent}s without children will not reset style)
  * - {@link net.kyori.adventure.text.ComponentBuilder} ({@link net.kyori.adventure.text.TextComponent.Builder}s without children will not reset style)
- * - {@link net.kyori.adventure.text.format.TextFormat}, {@link net.kyori.adventure.text.format.TextColor}
+ * - {@link net.kyori.adventure.text.format.TextFormat}
  * - {@link net.kyori.adventure.text.format.Style}
  * - Any other {@link Object}s will be converted to strings
  */
