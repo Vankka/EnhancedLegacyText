@@ -20,7 +20,7 @@ jobs:
           echo "ossrhPassword=$SONATYPE_PASSWORD" >> gradle.properties
           ./gradlew publishProject
         env:
-          SONATYPE_USERNAME: vankka
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_KEY: ${{ secrets.SONATYPE_KEY }}
           SONATYPE_KEY_PASS: ${{ secrets.SONATYPE_KEY_PASS }}
