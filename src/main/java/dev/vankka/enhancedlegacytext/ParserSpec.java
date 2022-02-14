@@ -25,6 +25,7 @@
 package dev.vankka.enhancedlegacytext;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -64,7 +65,7 @@ class ParserSpec {
     protected AtomicBoolean newChild = new AtomicBoolean(true);
 
     protected StringBuilder contentBuilder = new StringBuilder();
-    protected List<TextComponent.Builder> builders = new ArrayList<>();
+    protected List<ComponentBuilder<?, ?>> builders = new ArrayList<>();
     protected TextComponent.Builder current = Component.text();
 
     public void clear() {

@@ -26,6 +26,7 @@ package dev.vankka.enhancedlegacytext;
 
 import dev.vankka.enhancedlegacytext.gradient.Gradient;
 import dev.vankka.enhancedlegacytext.tuple.Pair;
+import net.kyori.adventure.text.BuildableComponent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
@@ -525,12 +526,15 @@ public class EnhancedLegacyTextParser extends ParserSpec {
                 }
 
                 if (replacement instanceof Component) {
-                    builders.add(Component.text().append((Component) replacement));
+                    builders.add(replacement instanceof BuildableComponent
+                                 ? ((BuildableComponent<?, ?>) replacement).toBuilder()
+                                 : Component.text().append((Component) replacement)
+                    );
                     newChild.set(false);
 
                     anyMatch = true;
                 } else if (replacement instanceof ComponentBuilder) {
-                    builders.add(Component.text().append((ComponentBuilder<?, ?>) replacement));
+                    builders.add((ComponentBuilder<?, ?>) replacement);
                     newChild.set(false);
 
                     anyMatch = true;
@@ -600,18 +604,18 @@ public class EnhancedLegacyTextParser extends ParserSpec {
         }
     }
 
-    private void addIfNotEmpty(TextComponent.Builder current, List<TextComponent.Builder> builders) {
+    private void addIfNotEmpty(TextComponent.Builder current, List<ComponentBuilder<?, ?>> builders) {
         if (current.build().equals(Component.empty())) { // Easiest way to tell
             return;
         }
         builders.add(current);
     }
 
-    private TextComponent.Builder collapse(List<TextComponent.Builder> builders) {
+    private ComponentBuilder<?, ?> collapse(List<ComponentBuilder<?, ?>> builders) {
         Collections.reverse(builders);
 
-        TextComponent.Builder last = null;
-        for (TextComponent.Builder current : builders) {
+        ComponentBuilder<?, ?> last = null;
+        for (ComponentBuilder<?, ?> current : builders) {
             if (last != null) {
                 current.append(last);
             }
