@@ -524,22 +524,7 @@ public class EnhancedLegacyTextParser extends ParserSpec {
                     replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
                 }
 
-                if (replacement instanceof TextComponent && ((TextComponent) replacement).children().isEmpty()) {
-                    TextComponent textComponent = (TextComponent) replacement;
-                    Set<TextDecoration> decorations = new HashSet<>();
-                    for (Map.Entry<TextDecoration, TextDecoration.State> entry : textComponent.decorations().entrySet()) {
-                        if (entry.getValue() == TextDecoration.State.TRUE) {
-                            decorations.add(entry.getKey());
-                        }
-                    }
-                    addIfNotEmpty(current, builders);
-                    current = Component.text(textComponent.content(), textComponent.color(), decorations).toBuilder();
-
-                    anyMatch = true;
-                } else if (replacement instanceof TextComponent.Builder && ((TextComponent.Builder) replacement).children().isEmpty()) {
-                    current = (TextComponent.Builder) replacement;
-                    anyMatch = true;
-                } else if (replacement instanceof Component) {
+                if (replacement instanceof Component) {
                     builders.add(Component.text().append((Component) replacement));
                     newChild.set(false);
 
