@@ -29,7 +29,6 @@ import dev.vankka.enhancedlegacytext.RecursiveReplacement;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Assertions;
@@ -62,10 +61,12 @@ public class EnhancedLegacyTextTest {
     public void placeholderTest() {
         Component reference =
                 Component.text()
-                        .content("test: ")
+                        .content("test")
                         .append(
-                                Component.text()
-                                        .content("hello")
+                                Component.text(": ")
+                                        .append(
+                                                Component.text("hello")
+                                        )
                         )
                         .build();
 
