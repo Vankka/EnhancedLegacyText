@@ -471,7 +471,7 @@ public class EnhancedLegacyTextParser extends ParserSpec {
             Gradient gradient = new Gradient(gradientColors, contentBuilder.length());
             char[] inputText = contentBuilder.toString().toCharArray();
             int index = 0;
-            for (TextColor color : gradient.getColors()) {
+            for (TextColor color : gradient.colors()) {
                 char character = inputText[index++];
                 current.append(Component.text(character).color(color));
             }

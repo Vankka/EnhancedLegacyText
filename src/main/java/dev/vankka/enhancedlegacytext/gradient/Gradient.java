@@ -39,38 +39,33 @@ public class Gradient {
         this.length = length;
     }
 
-    public List<TextColor> getColors() {
-        int regionCount = colors.size() - 1;
+    public List<TextColor> colors() {
+        int regions = colors.size() - 1;
 
-        float perRegion = (float) length / (regionCount);
-        float over = perRegion - (float) (int) perRegion;
+        float perRegion = (length - 1) / (float) regions;
 
-        float currentOver = 0;
-        int start;
-        int end = 0;
-
-        List<TextColor> colors = new ArrayList<>();
-        for (int color = 0; color < regionCount; ++color) {
-            start = end;
-            currentOver += over;
-            end = (int) Math.floor((((int) perRegion) * (color + 1) + currentOver));
-            if (currentOver > 1) {
-                currentOver = currentOver - 1;
+        List<TextColor> textColors = new ArrayList<>(length);
+        for (float i = 0; i < length; i++) {
+            int region = (int) Math.floor(i / perRegion);
+            if (region == regions) {
+                // final color
+                textColors.add(colors.get(region));
+                continue;
             }
 
-            TextColor one = this.colors.get(color);
-            TextColor two = this.colors.get(color + 1);
+            float percentage = (i - (perRegion * (float) region)) / perRegion;
 
-            int difference = end - start;
-            for (int current = 0; current < difference; current++) {
-                double percentage = (1f / difference) * (current + 1f);
-                int r = (int) (one.red() * (1f - percentage) + two.red() * percentage);
-                int g = (int) (one.green() * (1f - percentage) + two.green() * percentage);
-                int b = (int) (one.blue() * (1f - percentage) + two.blue() * percentage);
+            TextColor start = colors.get(region);
+            TextColor end = colors.get(region + 1);
 
-                colors.add(TextColor.color(r, g, b));
-            }
+            int r = (int) (start.red() * (1f - percentage) + end.red() * percentage);
+            int g = (int) (start.green() * (1f - percentage) + end.green() * percentage);
+            int b = (int) (start.blue() * (1f - percentage) + end.blue() * percentage);
+
+            textColors.add(TextColor.color(r, g, b));
         }
-        return colors;
+
+        return textColors;
     }
+
 }
