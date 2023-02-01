@@ -39,37 +39,17 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
 
     private final char colorChar;
     private final boolean colorResets;
-    private final char gradientStart;
-    private final char gradientDelimiter;
-    private final char gradientEnd;
-    private final char eventStart;
-    private final char eventDelimiter;
-    private final char eventEnd;
 
     EnhancedLegacyTextImpl(Builder builder) {
         this(
                 builder.getColorCharacter(),
-                builder.isColorResets(),
-                builder.getGradientStart(),
-                builder.getGradientDelimiter(),
-                builder.getGradientEnd(),
-                builder.getEventStart(),
-                builder.getEventDelimiter(),
-                builder.getEventEnd()
+                builder.isColorResets()
         );
     }
 
-    EnhancedLegacyTextImpl(char colorChar, boolean colorResets,
-                                  char gradientStart, char gradientDelimiter, char gradientEnd,
-                                  char eventStart, char eventDelimiter, char eventEnd) {
+    EnhancedLegacyTextImpl(char colorChar, boolean colorResets) {
         this.colorChar = colorChar;
         this.colorResets = colorResets;
-        this.gradientStart = gradientStart;
-        this.gradientDelimiter = gradientDelimiter;
-        this.gradientEnd = gradientEnd;
-        this.eventStart = eventStart;
-        this.eventDelimiter = eventDelimiter;
-        this.eventEnd = eventEnd;
     }
 
     @Override
@@ -88,26 +68,14 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
                 replacements,
                 recursiveReplacement,
                 colorChar,
-                colorResets,
-                gradientStart,
-                gradientDelimiter,
-                gradientEnd,
-                eventStart,
-                eventDelimiter,
-                eventEnd
+                colorResets
         ).out();
     }
 
     static class BuilderImpl implements Builder {
 
         private char colorChar = '&';
-        private boolean colorResets = true;
-        private char gradientStart = '{';
-        private char gradientDelimiter = ',';
-        private char gradientEnd = '}';
-        private char eventStart = '[';
-        private char eventDelimiter = ':';
-        private char eventEnd = ']';
+        private boolean colorResets = false;
 
         @Override
         public Builder colorCharacter(char colorChar) {
@@ -128,72 +96,6 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
         @Override
         public boolean isColorResets() {
             return colorResets;
-        }
-
-        @Override
-        public Builder gradientStart(char gradientStart) {
-            this.gradientStart = gradientStart;
-            return this;
-        }
-
-        @Override
-        public char getGradientStart() {
-            return gradientStart;
-        }
-
-        @Override
-        public Builder gradientDelimiter(char gradientDelimiter) {
-            this.gradientDelimiter = gradientDelimiter;
-            return this;
-        }
-
-        @Override
-        public char getGradientDelimiter() {
-            return gradientDelimiter;
-        }
-
-        @Override
-        public Builder gradientEnd(char gradientEnd) {
-            this.gradientEnd = gradientEnd;
-            return this;
-        }
-
-        @Override
-        public char getGradientEnd() {
-            return gradientEnd;
-        }
-
-        @Override
-        public Builder eventStart(char eventStart) {
-            this.eventStart = eventStart;
-            return this;
-        }
-
-        @Override
-        public char getEventStart() {
-            return eventStart;
-        }
-
-        @Override
-        public Builder eventDelimiter(char eventDelimiter) {
-            this.eventDelimiter = eventDelimiter;
-            return this;
-        }
-
-        @Override
-        public char getEventDelimiter() {
-            return eventDelimiter;
-        }
-
-        @Override
-        public Builder eventEnd(char eventEnd) {
-            this.eventEnd = eventEnd;
-            return this;
-        }
-
-        @Override
-        public char getEventEnd() {
-            return eventEnd;
         }
 
         @Override

@@ -39,20 +39,23 @@ Component component = EnhancedLegacyText.get().buildComponent("&c&lThis is red, 
 ### Color & Formatting
 
 - [The legacy codes](https://minecraft.fandom.com/wiki/Formatting_codes)
+  + Exception: Formatting codes remain enabled after color codes (Can be re-enabled via `EnhancedLegacyText.Builder#colorResets`)
 - Adventure's hex format, (`&#<hex>` / `&#abc123`)
 
 ### Color Gradients
 
-By default, surrounded by `{` and `}`, seperated by `,` (by default)
+Surrounded by `{` and `}`, seperated by `,` 
 
 Examples: 
 - `{&a,&2,&3}`
 - `{&a,&#00aa00,&3}` (mix & match permitted)
 - `{&#55ff55,&#00aa00,&#00aaaa}`
 
-### Click & Hover events
+## Square Brackets format
 
-Events are surrounded by `[` and `]`, and split at the first two `:`, first part being either `click` or `hover` (by default)
+### Click & Hover Events
+
+Events are surrounded by `[` and `]`, and split at the first two `:`, first part being either `click` or `hover`
 
 #### Click
 

@@ -85,8 +85,6 @@ public class EnhancedLegacyTextParser extends ParserSpec {
     private final RecursiveReplacement recursiveReplacement;
     private final char colorChar;
     private final boolean colorResets;
-    private final char gradientStart, gradientDelimiterChar, gradientEnd;
-    private final char eventStart, eventDelimiterChar, eventEnd;
 
     private ParserSpec componentCopy;
 
@@ -94,19 +92,11 @@ public class EnhancedLegacyTextParser extends ParserSpec {
             String input,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             RecursiveReplacement recursiveReplacement,
-            char colorChar, boolean colorResets,
-            char gradientStart, char gradientDelimiterChar, char gradientEnd,
-            char eventStart, char eventDelimiterChar, char eventEnd
+            char colorChar, boolean colorResets
     ) {
         this.recursiveReplacement = recursiveReplacement;
         this.colorChar = colorChar;
         this.colorResets = colorResets;
-        this.gradientStart = gradientStart;
-        this.gradientDelimiterChar = gradientDelimiterChar;
-        this.gradientEnd = gradientEnd;
-        this.eventStart = eventStart;
-        this.eventDelimiterChar = eventDelimiterChar;
-        this.eventEnd = eventEnd;
         processPlaceholders(input, replacements);
     }
 
@@ -129,7 +119,7 @@ public class EnhancedLegacyTextParser extends ParserSpec {
     void parse(String parseIn) {
         for (char c : parseIn.toCharArray()) {
             // Events
-            if (c == eventStart && !event && !format && !gradient && componentCopy == null) {
+            if (c == '[' && !event && !format && !gradient && componentCopy == null) {
                 event = true;
                 continue;
             }
@@ -152,9 +142,9 @@ public class EnhancedLegacyTextParser extends ParserSpec {
                 event = false;
                 String buffer = eventTypeBuffer.toString();
                 eventTypeBuffer.setLength(0);
-                contentBuilder.append(eventStart).append(buffer);
+                contentBuilder.append('[').append(buffer);
             }
-            if (c == eventEnd && (event && eventDelimiter && (eventValueBuffer.length() > 0 || componentCopy != null))) {
+            if (c == ']' && (event && eventDelimiter && (eventValueBuffer.length() > 0 || componentCopy != null))) {
                 if (!newChild.get()) {
                     // Clear up the existing text buffer first
                     appendContent(
@@ -216,10 +206,10 @@ public class EnhancedLegacyTextParser extends ParserSpec {
             }
             if (event) {
                 if (!eventDelimiter) {
-                    if (c == eventDelimiterChar) {
+                    if (c == ':') {
                         eventDelimiter = true;
                     } else {
-                        contentBuilder.append(eventStart).append(eventTypeBuffer);
+                        contentBuilder.append('[').append(eventTypeBuffer);
                         event = false;
                         eventTypeBuffer.setLength(0);
                         eventActionBuffer.setLength(0);
@@ -258,8 +248,8 @@ public class EnhancedLegacyTextParser extends ParserSpec {
                     if (eventActionFinalized || anyStartsWith) {
                         continue;
                     }
-                    contentBuilder.append(eventStart).append(eventTypeBuffer)
-                            .append(eventDelimiterChar).append(eventActionBuffer);
+                    contentBuilder.append('[').append(eventTypeBuffer)
+                            .append(':').append(eventActionBuffer);
                     event = false;
                     eventTypeBuffer.setLength(0);
                     eventDelimiter = false;
@@ -272,18 +262,18 @@ public class EnhancedLegacyTextParser extends ParserSpec {
             }
 
             // Gradient
-            if (c == gradientStart && !gradient && !format) {
+            if (c == '{' && !gradient && !format) {
                 // Begin gradient
                 gradient = true;
                 gradientDelimiter = true;
                 continue;
             }
-            if (c == gradientDelimiterChar && gradient && !format && !gradientDelimiter) {
+            if (c == ',' && gradient && !format && !gradientDelimiter) {
                 // Gradient color is changing
                 gradientDelimiter = true;
                 continue;
             }
-            if (c == gradientEnd && gradient && !format && !gradientDelimiter && gradientColors.size() > 1) {
+            if (c == '}' && gradient && !format && !gradientDelimiter && gradientColors.size() > 1) {
                 // Gradient is fully configured now
 
                 if (!newChild.get()) {

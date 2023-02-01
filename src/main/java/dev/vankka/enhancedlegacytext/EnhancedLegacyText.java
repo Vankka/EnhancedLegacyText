@@ -103,108 +103,18 @@ public interface EnhancedLegacyText {
         char getColorCharacter();
 
         /**
-         * Chooses if color codes reset all formatting.
-         * The default value is {@code true}.
-         * @param colorResets if color codes reset all formatting
+         * Chooses if color codes reset all formatting and events.
+         * The default value is {@code false}.
+         * @param colorResets if color codes reset all formatting and events
          * @return this builder instance, useful for chaining
          */
         Builder colorResets(boolean colorResets);
 
         /**
-         * If all formatting is reset on color code change.
-         * @return true if formatting is reset when the color code changes.
+         * If all formatting and events are reset on color code change.
+         * @return true if formatting and events are reset when the color changes.
          */
         boolean isColorResets();
-
-        /**
-         * Changes the gradient start character.
-         * The default value is {.
-         *
-         * @param gradientStart the new gradient start character
-         * @return this builder instance, useful for chaining
-         */
-        Builder gradientStart(char gradientStart);
-
-        /**
-         * Gets the gradient start character.
-         * @return the gradient start character
-         */
-        char getGradientStart();
-
-        /**
-         * Changes the gradient delimiter character.
-         * The default value is {@code ,}.
-         *
-         * @param gradientDelimiter the new gradient delimiter character
-         * @return this builder instance, useful for chaining
-         */
-        Builder gradientDelimiter(char gradientDelimiter);
-
-        /**
-         * Gets the gradient delimiter character.
-         * @return the gradient delimiter character
-         */
-        char getGradientDelimiter();
-
-        /**
-         * Changes the gradient end character.
-         * The default value is }.
-         *
-         * @param gradientEnd the new gradient end character
-         * @return this builder instance, useful for chaining
-         */
-        Builder gradientEnd(char gradientEnd);
-
-        /**
-         * Gets the gradient end character.
-         * @return the gradient end character
-         */
-        char getGradientEnd();
-
-        /**
-         * Changes the gradient start character.
-         * The default value is {@code [}.
-         *
-         * @param eventStart the new event start character
-         * @return this builder instance, useful for chaining
-         */
-        Builder eventStart(char eventStart);
-
-        /**
-         * Gets the event start character.
-         * @return the event start character
-         */
-        char getEventStart();
-
-        /**
-         * Gets the event delimiter character.
-         * The default value {@code :}.
-         *
-         * @param eventDelimiter the new event delimiter character
-         * @return this builder instance, useful for chaining
-         */
-        Builder eventDelimiter(char eventDelimiter);
-
-        /**
-         * Gets the event delimiter character.
-         * @return the event delimiter character
-         */
-        char getEventDelimiter();
-
-        /**
-         * Changes the event end character.
-         * The default value {@code ]}.
-         *
-         * @param eventEnd the new event end character
-         * @return this builder instance, useful for chaining
-         */
-        Builder eventEnd(char eventEnd);
-
-        /**
-         * Gets the event end character.
-         * @return the event end character
-         */
-        char getEventEnd();
 
         /**
          * Creates a new instance of {@link EnhancedLegacyText}.
