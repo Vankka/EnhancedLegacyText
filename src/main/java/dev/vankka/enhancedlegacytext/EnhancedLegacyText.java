@@ -24,7 +24,6 @@
 
 package dev.vankka.enhancedlegacytext;
 
-import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 
@@ -115,6 +114,34 @@ public interface EnhancedLegacyText {
          * @return true if formatting and events are reset when the color changes.
          */
         boolean isColorResets();
+
+        /**
+         * If legacy color codes and formatting is enabled.
+         * The default value is {@code true}.
+         * @param legacy if legacy is enabled
+         * @return this builder instance, useful for chaining
+         */
+        Builder useLegacy(boolean legacy);
+
+        /**
+         * If legacy color codes and formatting is enabled.
+         * @return true if legacy is enabled
+         */
+        boolean isUsingLegacy();
+
+        /**
+         * If using the Adventure hex color format is enabled.
+         * The default value is {@code true}.
+         * @param adventureHex if the adventure hex format is enabled
+         * @return this builder instance, useful for chaining
+         */
+        Builder adventureHex(boolean adventureHex);
+
+        /**
+         * If using the Adventure hex color format is enabled.
+         * @return true if the adventure hex format is enabled
+         */
+        boolean isAdventureHex();
 
         /**
          * Creates a new instance of {@link EnhancedLegacyText}.

@@ -24,7 +24,6 @@
 
 package dev.vankka.enhancedlegacytext;
 
-import dev.vankka.enhancedlegacytext.tuple.Pair;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,17 +38,23 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
 
     private final char colorChar;
     private final boolean colorResets;
+    private final boolean legacy;
+    private final boolean adventureHex;
 
     EnhancedLegacyTextImpl(Builder builder) {
         this(
                 builder.getColorCharacter(),
-                builder.isColorResets()
+                builder.isColorResets(),
+                builder.isUsingLegacy(),
+                builder.isAdventureHex()
         );
     }
 
-    EnhancedLegacyTextImpl(char colorChar, boolean colorResets) {
+    EnhancedLegacyTextImpl(char colorChar, boolean colorResets, boolean legacy, boolean adventureHex) {
         this.colorChar = colorChar;
         this.colorResets = colorResets;
+        this.legacy = legacy;
+        this.adventureHex = adventureHex;
     }
 
     @Override
@@ -63,19 +68,24 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
             @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
             @NotNull RecursiveReplacement recursiveReplacement
     ) {
-        return new EnhancedLegacyTextParser(
-                input,
-                replacements,
-                recursiveReplacement,
-                colorChar,
-                colorResets
-        ).out();
+        return EnhancedLegacyTextParser.PARSERS.get()
+                .parseToComponent(
+                        colorChar,
+                        colorResets,
+                        legacy,
+                        adventureHex,
+                        input,
+                        replacements,
+                        recursiveReplacement
+                );
     }
 
     static class BuilderImpl implements Builder {
 
         private char colorChar = '&';
         private boolean colorResets = false;
+        private boolean legacy = true;
+        private boolean adventureHex = true;
 
         @Override
         public Builder colorCharacter(char colorChar) {
@@ -96,6 +106,28 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
         @Override
         public boolean isColorResets() {
             return colorResets;
+        }
+
+        @Override
+        public Builder useLegacy(boolean legacy) {
+            this.legacy = legacy;
+            return this;
+        }
+
+        @Override
+        public boolean isUsingLegacy() {
+            return legacy;
+        }
+
+        @Override
+        public Builder adventureHex(boolean adventureHex) {
+            this.adventureHex = adventureHex;
+            return this;
+        }
+
+        @Override
+        public boolean isAdventureHex() {
+            return adventureHex;
         }
 
         @Override

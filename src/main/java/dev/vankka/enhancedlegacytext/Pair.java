@@ -22,9 +22,9 @@
  * SOFTWARE.
  */
 
-package dev.vankka.enhancedlegacytext.tuple;
+package dev.vankka.enhancedlegacytext;
 
-public class Pair<K, V> {
+class Pair<K, V> {
 
     private final K key;
     private final V value;

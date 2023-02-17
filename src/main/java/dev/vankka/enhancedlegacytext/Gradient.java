@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-package dev.vankka.enhancedlegacytext.gradient;
+package dev.vankka.enhancedlegacytext;
 
 import net.kyori.adventure.text.format.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Gradient {
+class Gradient {
 
     private final List<TextColor> colors;
     private final int length;
@@ -67,5 +67,4 @@ public class Gradient {
 
         return textColors;
     }
-
 }

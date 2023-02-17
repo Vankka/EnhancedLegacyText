@@ -24,12 +24,7 @@
 
 package dev.vankka.enhancedlegacytext;
 
-import dev.vankka.enhancedlegacytext.gradient.Gradient;
-import dev.vankka.enhancedlegacytext.tuple.Pair;
-import net.kyori.adventure.text.BuildableComponent;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.ComponentBuilder;
-import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.*;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.*;
@@ -40,452 +35,662 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class EnhancedLegacyTextParser extends ParserSpec {
+import static dev.vankka.enhancedlegacytext.ParseContext.SquareBracketStatus.*;
 
-    private static final String HEX_CHARACTERS = "1234567890abcdef";
-    private static final Map<Character, TextFormat> FORMATS = new HashMap<>();
-    private static final List<String> CLICK_ACTIONS = new ArrayList<>();
-    private static final List<String> HOVER_ACTIONS = new ArrayList<>();
+/**
+ * The parser, not thread safe.
+ */
+public class EnhancedLegacyTextParser {
+
+    protected static final ThreadLocal<EnhancedLegacyTextParser> PARSERS = ThreadLocal.withInitial(EnhancedLegacyTextParser::new);
+
+    private static final char ESCAPE = '\\';
+    private static final char SQUARE_BRACKET_START = '[';
+    private static final char SQUARE_BRACKET_DELIMITER = ':';
+    private static final char SQUARE_BRACKET_END = ']';
+    private static final char GRADIENT_START = '{';
+    private static final char GRADIENT_DELIMITER = ',';
+    private static final char GRADIENT_END = '}';
+    private static final char HEX = '#';
+
+    // Hover event type
+    private static final String SHOW_TEXT = "show_text";
+
+    // Color namespaces
+    private static final String NAMESPACE_MINECRAFT = "minecraft";
+    private static final String NAMESPACE_CSS = "css";
+    private static final String NAMESPACE_HEX = "hex";
+
+    // Square brackets prefixes
+    private static final List<Pair<String, ParseContext.SquareBracketStatus>> STATUS_TRANSITIONS = new ArrayList<>();
+
+    // Formats
+    private static final Map<String, TextDecoration> DECORATIONS = new HashMap<>(7);
+
+    // Hover & click events
+    private static final List<String> ACCEPTABLE_HOVER_EVENTS = Collections.singletonList(SHOW_TEXT);
+    private static final List<Pair<String, ClickEvent.Action>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
 
     static {
-        FORMATS.put('0', NamedTextColor.BLACK);
-        FORMATS.put('1', NamedTextColor.DARK_BLUE);
-        FORMATS.put('2', NamedTextColor.DARK_GREEN);
-        FORMATS.put('3', NamedTextColor.DARK_AQUA);
-        FORMATS.put('4', NamedTextColor.DARK_RED);
-        FORMATS.put('5', NamedTextColor.DARK_PURPLE);
-        FORMATS.put('6', NamedTextColor.GOLD);
-        FORMATS.put('7', NamedTextColor.GRAY);
-        FORMATS.put('8', NamedTextColor.DARK_GRAY);
-        FORMATS.put('9', NamedTextColor.BLUE);
-        FORMATS.put('a', NamedTextColor.GREEN);
-        FORMATS.put('b', NamedTextColor.AQUA);
-        FORMATS.put('c', NamedTextColor.RED);
-        FORMATS.put('d', NamedTextColor.LIGHT_PURPLE);
-        FORMATS.put('e', NamedTextColor.YELLOW);
-        FORMATS.put('f', NamedTextColor.WHITE);
+        STATUS_TRANSITIONS.add(new Pair<>("color", COLOR));
+        STATUS_TRANSITIONS.add(new Pair<>("decoration", DECORATION));
+        STATUS_TRANSITIONS.add(new Pair<>("click", CLICK_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>("hover", HOVER_TYPE));
 
-        FORMATS.put('k', TextDecoration.OBFUSCATED);
-        FORMATS.put('l', TextDecoration.BOLD);
-        FORMATS.put('m', TextDecoration.STRIKETHROUGH);
-        FORMATS.put('n', TextDecoration.UNDERLINED);
-        FORMATS.put('o', TextDecoration.ITALIC);
-        FORMATS.put('r', null); // Reset
+        for (TextDecoration value : TextDecoration.values()) {
+            DECORATIONS.put(value.name().toLowerCase(Locale.ROOT), value);
+        }
+        DECORATIONS.put("italics", TextDecoration.ITALIC);
+        DECORATIONS.put("underline", TextDecoration.UNDERLINED);
 
         for (ClickEvent.Action value : ClickEvent.Action.values()) {
             if (value == ClickEvent.Action.OPEN_FILE) {
                 // Client side only
                 continue;
             }
-            CLICK_ACTIONS.add(value.toString());
+            ACCEPTABLE_CLICK_EVENTS.add(new Pair<>(value.name().toLowerCase(), value));
         }
-        HOVER_ACTIONS.add(HoverEvent.Action.SHOW_TEXT.toString());
     }
 
-    private final RecursiveReplacement recursiveReplacement;
-    private final char colorChar;
-    private final boolean colorResets;
+    private char colorChar;
+    private boolean colorResets;
+    private boolean legacy;
+    private boolean adventureHex;
+    private RecursiveReplacement recursiveReplacement;
+    private ParseContext ctx;
+    private ParseContext contextCopy;
 
-    private ParserSpec componentCopy;
+    private EnhancedLegacyTextParser() {}
 
-    protected EnhancedLegacyTextParser(
+    public Component parseToComponent(
+            char colorChar,
+            boolean colorResets,
+            boolean legacy,
+            boolean adventureHex,
             String input,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            RecursiveReplacement recursiveReplacement,
-            char colorChar, boolean colorResets
+            RecursiveReplacement recursiveReplacement
     ) {
-        this.recursiveReplacement = recursiveReplacement;
         this.colorChar = colorChar;
         this.colorResets = colorResets;
+        this.legacy = legacy;
+        this.adventureHex = adventureHex;
+        this.recursiveReplacement = recursiveReplacement;
+        this.ctx = new ParseContext();
         processPlaceholders(input, replacements);
+
+        Component output = out();
+        ctx = null;
+        return output;
     }
 
-    Component out() {
+    private Component out() {
         // Append remaining content
         appendContent(
-                contentBuilder,
                 true,
-                false,
                 false,
                 false
         );
 
         // Simplify the output component if possible
-        List<Component> rootChildren = rootBuilder.children();
-        return rootChildren.size() == 1 ? rootChildren.get(0) : rootBuilder.build();
+        List<Component> rootChildren = ctx.rootBuilder.children();
+        return rootChildren.size() == 1 ? rootChildren.get(0) : ctx.rootBuilder.build();
     }
 
-    @SuppressWarnings("unchecked")
-    void parse(String parseIn) {
+    private void bufferForRollback(char c) {
+        ctx.rollbackBuffer.append(c);
+    }
+
+    private void rollback() {
+        if (ctx.gradient) {
+            ctx.gradientColors.clear();
+        }
+        reset();
+
+        if (ctx.rollbackBuffer.length() == 0) {
+            return;
+        }
+
+        // First character as normal content
+        ctx.content.append(ctx.rollbackBuffer.charAt(0));
+
+        String end = ctx.rollbackBuffer.substring(1);
+        ctx.rollbackBuffer.setLength(0);
+
+        // Rest parsed one by one
+        for (char c : end.toCharArray()) {
+            parseCharacter(c);
+        }
+    }
+
+    private void reset() {
+        ctx.squareBracketStatus = NONE;
+        ctx.squareBracketPrefix.setLength(0);
+        for (int i = 0; i < ctx.squareBracketContext.length; i++) {
+            ctx.squareBracketContext[i].setLength(0);
+        }
+
+        ctx.color = false;
+        ctx.hexColor = false;
+        Arrays.fill(ctx.hex, Character.MIN_VALUE);
+
+        ctx.gradient = false;
+        ctx.gradientDelimiter = false;
+    }
+
+    private void parse(String parseIn) {
         for (char c : parseIn.toCharArray()) {
-            // Events
-            if (c == '[' && !event && !format && !gradient && componentCopy == null) {
-                event = true;
-                continue;
+            parseCharacter(c);
+        }
+
+        if (ctx.squareBracketStatus != NONE) {
+            rollback();
+        }
+        if (ctx.content.length() > 0) {
+            appendContent(false, true, false);
+        }
+    }
+
+    private void parseCharacter(char c) {
+        boolean escape = ctx.escape;
+        if (escape) {
+            ctx.escape = false;
+        } else if (c == ESCAPE) {
+            ctx.escape = true;
+            return;
+        }
+
+        // Square brackets
+        ParseContext.SquareBracketStatus squareBracketStatus = ctx.squareBracketStatus;
+        if (squareBracketStatus != NONE) {
+            bufferForRollback(c);
+
+            if (c == SQUARE_BRACKET_END && !escape && (squareBracketStatus == HOVER_TYPE || squareBracketStatus == CLICK_TYPE)) {
+                rollback();
+                return;
             }
-            if (event && eventType == 0) {
-                String currentBuffer = eventTypeBuffer.toString() + c;
-                if ("click".startsWith(currentBuffer) || "hover".startsWith(currentBuffer)) {
-                    if (currentBuffer.equals("click")) {
-                        eventType = 1;
-                        continue;
-                    } else if (currentBuffer.equals("hover")) {
-                        eventType = 2;
-                        continue;
-                    } else {
-                        eventTypeBuffer.append(c);
-                        continue;
+
+            // Undo hover/click/color
+            if (c == SQUARE_BRACKET_END && !escape && squareBracketStatus == PREFIX) {
+                String buffer = ctx.squareBracketPrefix.toString();
+                switch (buffer) {
+                    case "hover": {
+                        if (ctx.hoverEvent == null) {
+                            rollback();
+                            return;
+                        }
+
+                        if (!ctx.newChild.get()) {
+                            appendContent(true, true, false);
+                        }
+                        ctx.hoverEvent = null;
+                        break;
+                    }
+                    case "click": {
+                        if (ctx.clickEvent == null) {
+                            rollback();
+                            return;
+                        }
+
+                        if (!ctx.newChild.get()) {
+                            appendContent(true, true, false);
+                        }
+                        ctx.clickEvent = null;
+                        break;
+                    }
+                    case "color": {
+                        if (ctx.current.build().color() == null) {
+                            rollback();
+                            return;
+                        }
+
+                        if (!ctx.newChild.get()) {
+                            appendContent(true, true, false);
+                        }
+                        colorize(null);
+                        break;
+                    }
+                    default: {
+                        TextColor color = parseColor(null, buffer);
+                        if (color != null) {
+                            applyColor(color);
+                            return;
+                        }
+
+                        flipDecoration(buffer);
+                        return;
                     }
                 }
 
-                // Not a valid event type, add as content
-                event = false;
-                String buffer = eventTypeBuffer.toString();
-                eventTypeBuffer.setLength(0);
-                contentBuilder.append('[').append(buffer);
+                reset();
+                ctx.rollbackBuffer.setLength(0);
+                return;
             }
-            if (c == ']' && (event && eventDelimiter && (eventValueBuffer.length() > 0 || componentCopy != null))) {
-                if (!newChild.get()) {
-                    // Clear up the existing text buffer first
-                    appendContent(
-                            contentBuilder,
-                            false,
-                            true,
-                            false,
-                            true
-                    );
-                }
 
-                String actionKey = (componentCopy != null ? componentCopy.eventActionBuffer : eventActionBuffer)
-                        .toString().toLowerCase(Locale.ROOT);
-                String value = eventValueBuffer.toString();
-                if (eventType == 1) {
-                    // Click
-                    ClickEvent.Action action = ClickEvent.Action.valueOf(actionKey.toUpperCase(Locale.ROOT));
-                    clickEvent = ClickEvent.clickEvent(action, value);
-                } else {
-                    // Hover
-                    HoverEvent.Action<Component> action = (HoverEvent.Action<Component>) HoverEvent.Action.NAMES.value(actionKey);
-                    if (action == null) {
-                        throw new IllegalStateException("Unknown hover action: " + actionKey);
+            if (squareBracketStatus == PREFIX) {
+                String buffer = ctx.squareBracketPrefix.toString();
+                if (c == SQUARE_BRACKET_DELIMITER && !escape) {
+                    for (Pair<String, ParseContext.SquareBracketStatus> transition : STATUS_TRANSITIONS) {
+                        if (contextCopy != null && transition.getValue().isEvent()) {
+                            continue;
+                        }
+
+                        String desired = transition.getKey();
+                        if (buffer.equals(desired)) {
+                            ctx.squareBracketPrefix.setLength(0);
+                            ctx.squareBracketStatus = transition.getValue();
+                            return;
+                        }
                     }
 
-                    if (actionKey.equals(HoverEvent.Action.SHOW_TEXT.toString())) {
-                        Component component = out();
-
-                        componentCopy.copyTo(this);
-                        componentCopy = null;
-
-                        appendContent(
-                                contentBuilder,
-                                false,
-                                true,
-                                false,
-                                true
-                        );
-
-                        hoverEvent = HoverEvent.hoverEvent(
-                                action,
-                                component
-                        );
-                    } else {
-                        hoverEvent = HoverEvent.hoverEvent(
-                                action,
-                                Component.text(value)
-                        );
-                    }
+                    rollback();
+                    return;
                 }
-                event = false;
-                eventDelimiter = false;
-                eventType = 0;
-                eventTypeBuffer.setLength(0);
-                eventActionBuffer.setLength(0);
-                eventActionFinalized = false;
-                eventValueBuffer.setLength(0);
-                continue;
+
+                ctx.squareBracketPrefix.append(c);
+                return;
             }
-            if (event) {
-                if (!eventDelimiter) {
-                    if (c == ':') {
-                        eventDelimiter = true;
-                    } else {
-                        contentBuilder.append('[').append(eventTypeBuffer);
-                        event = false;
-                        eventTypeBuffer.setLength(0);
-                        eventActionBuffer.setLength(0);
-                    }
-                    continue;
-                }
 
-                if (!eventActionFinalized) {
-                    eventActionBuffer.append(c);
+            boolean hover;
+            if ((hover = squareBracketStatus == HOVER_TYPE) || squareBracketStatus == CLICK_TYPE) {
+                if (c == SQUARE_BRACKET_DELIMITER && !escape) {
+                    String buffer = ctx.squareBracketContext[0].toString();
 
-                    String currentBuffer = eventActionBuffer.toString().toLowerCase(Locale.ROOT);
-                    List<String> possibleValues = eventType == 1 ? CLICK_ACTIONS : HOVER_ACTIONS;
-
-                    boolean anyStartsWith = false;
-                    for (String possibleValue : possibleValues) {
-                        if (currentBuffer.equalsIgnoreCase(possibleValue)) {
-                            eventActionFinalized = true;
-                            eventDelimiter = false;
-                            if (eventType == 2 && currentBuffer.equalsIgnoreCase(HoverEvent.Action.SHOW_TEXT.toString())) {
-                                componentCopy = new Impl();
-                                copyTo(componentCopy);
-                                clear();
-
-                                event = componentCopy.event;
-                                eventType = componentCopy.eventType;
-                                eventActionBuffer = componentCopy.eventActionBuffer;
-                                eventDelimiter = componentCopy.eventDelimiter;
-                                eventActionFinalized = componentCopy.eventActionFinalized;
+                    if (hover) {
+                        for (String event : ACCEPTABLE_HOVER_EVENTS) {
+                            if (event.equals(buffer)) {
+                                ctx.squareBracketStatus = HOVER_VALUE;
+                                return;
                             }
-                            break;
                         }
-                        if (possibleValue.startsWith(currentBuffer)) {
-                            anyStartsWith = true;
+                    } else /* click */ {
+                        for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
+                            String match = event.getKey();
+                            if (match.equals(buffer)) {
+                                ctx.squareBracketStatus = CLICK_VALUE;
+                                return;
+                            }
                         }
                     }
-                    if (eventActionFinalized || anyStartsWith) {
-                        continue;
-                    }
-                    contentBuilder.append('[').append(eventTypeBuffer)
-                            .append(':').append(eventActionBuffer);
-                    event = false;
-                    eventTypeBuffer.setLength(0);
-                    eventDelimiter = false;
-                    eventActionBuffer.setLength(0);
-                    continue;
-                } else if (componentCopy == null) {
-                    eventValueBuffer.append(c);
-                    continue;
+
+                    rollback();
+                    return;
                 }
+
+                ctx.squareBracketContext[0].append(c);
+                return;
             }
 
-            // Gradient
-            if (c == '{' && !gradient && !format) {
-                // Begin gradient
-                gradient = true;
-                gradientDelimiter = true;
-                continue;
-            }
-            if (c == ',' && gradient && !format && !gradientDelimiter) {
-                // Gradient color is changing
-                gradientDelimiter = true;
-                continue;
-            }
-            if (c == '}' && gradient && !format && !gradientDelimiter && gradientColors.size() > 1) {
-                // Gradient is fully configured now
+            if ((hover = squareBracketStatus == HOVER_VALUE) || squareBracketStatus == CLICK_VALUE) {
+                if (c == SQUARE_BRACKET_END && !escape) {
+                    String type = ctx.squareBracketContext[0].toString();
+                    String valueBuffer = ctx.squareBracketContext[1].toString();
 
-                if (!newChild.get()) {
-                    // Clear up the existing text buffer first
+                    if (hover) {
+                        if (type.equals(SHOW_TEXT)) {
+                            clearExistingContent();
+
+                            contextCopy = ctx;
+                            ctx = new ParseContext();
+                            parse(valueBuffer);
+
+                            Component component = out();
+
+                            ctx = contextCopy;
+                            contextCopy = null;
+
+                            ctx.hoverEvent = HoverEvent.showText(component);
+                        } else {
+                            throw new IllegalStateException("Impossible hover type: " + type);
+                        }
+                    } else /* click */ {
+                        ClickEvent.Action action = null;
+                        for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
+                            if (event.getKey().equals(type)) {
+                                action = event.getValue();
+                                break;
+                            }
+                        }
+                        if (action == null) {
+                            throw new IllegalStateException("Impossible click type: " + type);
+                        }
+
+                        if (!ctx.newChild.get()) {
+                            // Clear up the existing text buffer first
+                            appendContent(false, true, true);
+                        }
+
+                        ctx.clickEvent = ClickEvent.clickEvent(action, valueBuffer);
+                    }
+
+                    reset();
+                    ctx.rollbackBuffer.setLength(0);
+                    return;
+                }
+
+                ctx.squareBracketContext[1].append(c);
+                return;
+            }
+
+            boolean namespaced;
+            if ((namespaced = squareBracketStatus == COLOR_NAMESPACED) || squareBracketStatus == COLOR) {
+                if (!namespaced && c == SQUARE_BRACKET_DELIMITER && !escape) {
+                    String buffer = ctx.squareBracketContext[0].toString();
+                    if (!buffer.equals(NAMESPACE_MINECRAFT) && !buffer.equals(NAMESPACE_CSS) && !buffer.equals(NAMESPACE_HEX)) {
+                        rollback();
+                        return;
+                    }
+
+                    ctx.squareBracketStatus = COLOR_NAMESPACED;
+                    return;
+                }
+                if (!namespaced && c == HEX && !escape) {
+                    if (ctx.squareBracketContext[0].length() > 0) {
+                        rollback();
+                        return;
+                    }
+
+                    ctx.squareBracketContext[0].append(NAMESPACE_HEX);
+                    ctx.squareBracketStatus = COLOR_NAMESPACED;
+                    return;
+                }
+
+                if (c == SQUARE_BRACKET_END && !escape) {
+                    String namespace = namespaced ? ctx.squareBracketContext[0].toString() : null;
+                    String name = ctx.squareBracketContext[namespaced ? 1 : 0].toString();
+
+                    TextColor color = parseColor(namespace, name);
+                    if (color == null) {
+                        rollback();
+                        return;
+                    }
+
+                    applyColor(color);
+                    return;
+                }
+
+                ctx.squareBracketContext[namespaced ? 1 : 0].append(c);
+                return;
+            }
+
+            if (squareBracketStatus == DECORATION) {
+                if (c == SQUARE_BRACKET_END && !escape) {
+                    String buffer = ctx.squareBracketContext[0].toString();
+                    flipDecoration(buffer);
+                    return;
+                }
+
+                ctx.squareBracketContext[0].append(c);
+                return;
+            }
+
+            throw new IllegalStateException("Unexpected SquareBracketStatus: " + squareBracketStatus);
+        } else if (c == SQUARE_BRACKET_START && !escape) {
+            bufferForRollback(c);
+            ctx.squareBracketStatus = PREFIX;
+            return;
+        }
+
+        if (ctx.color) {
+            bufferForRollback(c);
+            if (c == HEX && !escape && adventureHex) {
+                ctx.hexColor = true;
+                return;
+            }
+
+            if (ctx.hexColor) {
+                for (int i = 0; i < 6; i++) {
+                    if (ctx.hex[i] == Character.MIN_VALUE) {
+                        if (!Colors.HEX_CHARACTERS.contains(Character.toString(c))) {
+                            rollback();
+                            return;
+                        }
+
+                        ctx.hex[i] = c;
+                        if (i != 5) {
+                            return;
+                        }
+                    }
+                }
+
+                TextColor color = TextColor.fromHexString("#" + new String(ctx.hex));
+                ctx.color = false;
+                ctx.hexColor = false;
+
+                if (ctx.gradient) {
+                    if (!ctx.newChild.get()) {
+                        // Clear up the existing text buffer first
+                        appendContent(false, true, false);
+                    }
+                    ctx.gradientColors.add(color);
+                    ctx.gradientDelimiter = true;
+                    Arrays.fill(ctx.hex, Character.MIN_VALUE);
+                } else {
+                    colorize(color);
+                    reset();
+                }
+            } else {
+                if (!legacy) {
+                    rollback();
+                    return;
+                }
+
+                TextFormat legacy = Colors.LEGACY.get(c);
+                if (legacy == null || (ctx.gradient && !(legacy instanceof TextColor))) {
+                    rollback();
+                    return;
+                }
+
+                if (legacy == Colors.RESET) {
                     appendContent(
-                            contentBuilder,
-                            false,
                             true,
                             true,
                             false
                     );
-                }
-                gradient = false;
-                continue;
-            }
-
-            // Format
-            if (c == colorChar && !format && (!gradient || gradientDelimiter || gradientColors.isEmpty())) {
-                // Start of a formatting code
-                format = true;
-                continue;
-            }
-            if (format) {
-                if (c == '#' && !hex) {
-                    hex = true;
-                    continue;
-                }
-                if (hex) {
-                    int index = HEX_CHARACTERS.indexOf(Character.toLowerCase(c));
-                    if (index != -1) {
-                        colorChars[currentChar] = c;
-                        if (++currentChar == 6) {
-                            TextColor color = TextColor.fromHexString("#" + new String(colorChars));
-                            if (gradient) {
-                                gradientColors.add(color);
-                                gradientDelimiter = false;
-                            } else {
-                                colorize(
-                                        colorResets,
-                                        color,
-                                        contentBuilder
-                                );
-                            }
-                        } else {
-                            continue;
-                        }
+                    ctx.gradientColors.clear();
+                    ctx.clickEvent = null;
+                    ctx.hoverEvent = null;
+                    ctx.newChild.set(true);
+                } else if (legacy instanceof TextColor) {
+                    TextColor color = (TextColor) legacy;
+                    if (ctx.gradient) {
+                        ctx.gradientColors.add(color);
+                        ctx.gradientDelimiter = true;
+                        ctx.color = false;
+                        return;
                     } else {
-                        // Revert color due to invalid character
-                        contentBuilder.append(colorChar).append('#').append(colorChars).append(c);
-                        newChild.set(false);
+                        ctx.gradientColors.clear();
+                        colorize(color);
+                        reset();
+                        ctx.rollbackBuffer.setLength(0);
                     }
-
-                    hex = false;
-                    colorChars = new char[6];
-                    currentChar = 0;
+                } else if (legacy instanceof TextDecoration) {
+                    decorate((TextDecoration) legacy, true);
                 } else {
-                    if (FORMATS.containsKey(c)) {
-                        TextFormat textFormat = FORMATS.get(c);
-                        if (textFormat == null) {
-                            // Reset
-                            appendContent(
-                                    contentBuilder,
-                                    true,
-                                    true,
-                                    false,
-                                    false
-                            );
-                            gradientColors.clear();
-                            clickEvent = null;
-                            hoverEvent = null;
-                            newChild.set(true);
-                        } else {
-                            if (textFormat instanceof TextColor) {
-                                TextColor color = (TextColor) textFormat;
-                                if (gradient) {
-                                    gradientColors.add(color);
-                                    gradientDelimiter = false;
-                                } else {
-                                    gradientColors.clear();
-                                    colorize(
-                                            colorResets,
-                                            color,
-                                            contentBuilder
-                                    );
-                                }
-                            } else if (textFormat instanceof TextDecoration) {
-                                if (newChild.get()) {
-                                    current.decorate((TextDecoration) textFormat);
-                                } else {
-                                    gradientColors.clear();
-                                    appendContent(
-                                            contentBuilder,
-                                            false,
-                                            true,
-                                            false,
-                                            false
-                                    );
-                                    current.decorate((TextDecoration) textFormat);
-                                    newChild.set(true);
-                                }
-                            } else {
-                                throw new IllegalStateException(textFormat.getClass().getName() + " is not a known TextFormat");
-                            }
-                        }
-                    } else {
-                        contentBuilder.append(colorChar).append(c);
-                        newChild.set(false);
-                    }
+                    throw new IllegalStateException(legacy.getClass().getName() + " is not a known TextFormat");
                 }
-                format = false;
-                continue;
+                reset();
+                ctx.rollbackBuffer.setLength(0);
             }
-
-            // Gradient revert
-            if (gradient) {
-                contentBuilder.append('{');
-                List<String> colorsReverted = new ArrayList<>();
-                for (TextColor color : gradientColors) {
-                    if (color instanceof NamedTextColor) {
-                        for (Map.Entry<Character, TextFormat> entry : FORMATS.entrySet()) {
-                            if (entry.getValue() == color) {
-                                colorsReverted.add(colorChar + String.valueOf(entry.getKey()));
-                                break;
-                            }
-                        }
-                    } else {
-                        colorsReverted.add(colorChar + color.asHexString());
-                    }
-                }
-                contentBuilder.append(String.join(",", colorsReverted)).append(gradientDelimiter ? "," : "");
-                gradient = false;
+            return;
+        }
+        if (!ctx.gradientDelimiter && c == colorChar && !escape) {
+            bufferForRollback(c);
+            ctx.color = true;
+            return;
+        }
+        if (ctx.gradient && ctx.gradientDelimiter && c == GRADIENT_END && !escape) {
+            ctx.gradient = false;
+            ctx.rollbackBuffer.setLength(0);
+            return;
+        }
+        if (ctx.gradientDelimiter) {
+            bufferForRollback(c);
+            ctx.gradientDelimiter = false;
+            if (c != GRADIENT_DELIMITER || escape) {
+                rollback();
             }
-
-            contentBuilder.append(c);
-            newChild.set(false);
+            return;
+        }
+        if (c == GRADIENT_START && !escape) {
+            bufferForRollback(c);
+            ctx.gradient = true;
+            return;
         }
 
-        if (contentBuilder.length() > 0) {
-            appendContent(contentBuilder, false, true, false, false);
+        ctx.content.append(c);
+        ctx.newChild.set(false);
+    }
+
+    private void clearExistingContent() {
+        if (!ctx.newChild.get()) {
+            // Clear up the existing text buffer first
+            appendContent(false, true, true);
         }
     }
 
-    private void colorize(
-            boolean colorResets,
-            TextColor textColor,
-            StringBuilder textBuilder
-    ) {
-        if (colorResets) {
-            appendContent(
-                    textBuilder,
-                    true,
-                    true,
-                    false,
-                    false
-            );
-            newChild.set(true);
-        } else if (!newChild.get()) {
-            appendContent(
-                    textBuilder,
-                    false,
-                    true,
-                    false,
-                    false
-            );
-            newChild.set(true);
+    private void flipDecoration(String value) {
+        TextDecoration decoration = DECORATIONS.get(value);
+        if (decoration != null) {
+            boolean isDecorated = ctx.current.build().decoration(decoration) == TextDecoration.State.TRUE;
+            decorate(decoration, !isDecorated);
+            reset();
+            return;
         }
-        current.color(textColor);
+
+        rollback();
+    }
+
+    private void applyColor(TextColor color) {
+        if (ctx.gradient) {
+            if (!ctx.newChild.get()) {
+                // Clear up the existing text buffer first
+                appendContent(false, true, false);
+            }
+            ctx.gradientColors.add(color);
+            ctx.gradientDelimiter = true;
+
+            ctx.squareBracketStatus = NONE;
+            ctx.squareBracketPrefix.setLength(0);
+            for (int i = 0; i < ctx.squareBracketContext.length; i++) {
+                ctx.squareBracketContext[i].setLength(0);
+            }
+        } else {
+            colorize(color);
+            reset();
+        }
+    }
+
+    private TextColor parseColor(String namespace, String name) {
+        boolean namespaced = namespace != null;
+
+        TextColor color = null;
+        if (!namespaced || NAMESPACE_MINECRAFT.equals(namespace)) {
+            color = NamedTextColor.NAMES.value(name);
+        }
+        if (color == null && (!namespaced || NAMESPACE_CSS.equals(namespace))) {
+            color = Colors.CSS.get(name);
+        }
+
+        if (color == null && (!namespaced || NAMESPACE_HEX.equals(namespace))) {
+            if (name.startsWith("#")) {
+                name = name.substring(1);
+            }
+
+            int length;
+            if ((length = name.length()) == 3 || name.length() == 6) {
+                boolean isHex = true;
+                for (int i = 0; i < name.length(); i++) {
+                    if (!Colors.HEX_CHARACTERS.contains(Character.toString(name.charAt(i)))) {
+                        isHex = false;
+                        break;
+                    }
+                }
+                if (isHex) {
+                    if (length == 3) {
+                        int c1 = Character.digit(name.charAt(0), 16);
+                        int c2 = Character.digit(name.charAt(1), 16);
+                        int c3 = Character.digit(name.charAt(2), 16);
+
+                        int rgb = (c3 + (c3 << 4))
+                                + ((c2 + (c2 << 4)) << 8)
+                                + ((c1 + (c1 << 4)) << 16);
+                        color = TextColor.color(rgb);
+                    } else {
+                        int rgb = Integer.parseInt(name, 16);
+                        color = TextColor.color(rgb);
+                    }
+                }
+            }
+        }
+
+        return color;
+    }
+
+    private void colorize(TextColor textColor) {
+        if (colorResets || !ctx.newChild.get()) {
+            appendContent(
+                    colorResets,
+                    true,
+                    false
+            );
+            ctx.newChild.set(true);
+        }
+        ctx.current.color(textColor);
+    }
+
+    private void decorate(TextDecoration decoration, boolean state) {
+        if (ctx.newChild.get()) {
+            ctx.current.decoration(decoration, state);
+        } else {
+            appendContent(false, true, false);
+            ctx.current.decoration(decoration, state);
+            ctx.newChild.set(true);
+        }
     }
 
     private void appendContent(
-            StringBuilder contentBuilder,
             boolean toRoot,
             boolean allowEmpty,
-            boolean noGradients,
-            boolean noEvents
+            boolean noGradients
     ) {
-        List<TextColor> gradientColors = noGradients ? Collections.emptyList() : this.gradientColors;
-        ClickEvent clickEvent = noEvents ? null : this.clickEvent;
-        HoverEvent<?> hoverEvent = noEvents ? null : this.hoverEvent;
+        StringBuilder contentBuilder = ctx.content;
+        List<TextColor> gradientColors = noGradients ? Collections.emptyList() : ctx.gradientColors;
+        ClickEvent clickEvent = ctx.clickEvent;
+        HoverEvent<?> hoverEvent = ctx.hoverEvent;
 
         if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
-            addIfNotEmpty(current, builders);
-            current = Component.text();
+            addIfNotEmpty(ctx.current, ctx.builders);
+            ctx.current = Component.text();
 
             Gradient gradient = new Gradient(gradientColors, contentBuilder.length());
             char[] inputText = contentBuilder.toString().toCharArray();
             int index = 0;
             for (TextColor color : gradient.colors()) {
                 char character = inputText[index++];
-                current.append(Component.text(character).color(color));
+                ctx.current.append(Component.text(character).color(color));
             }
             gradientColors.clear();
         } else {
-            current.content(current.content() + contentBuilder);
+            ctx.current.content(ctx.current.content() + contentBuilder);
         }
         contentBuilder.setLength(0);
 
         if (hoverEvent != null) {
-            current.hoverEvent(hoverEvent);
+            ctx.current.hoverEvent(hoverEvent);
         }
         if (clickEvent != null) {
-            current.clickEvent(clickEvent);
+            ctx.current.clickEvent(clickEvent);
         }
 
-        if (allowEmpty || current.content().length() > 0 || !current.children().isEmpty()) {
-            addIfNotEmpty(current, builders);
+        if (allowEmpty || ctx.current.content().length() > 0 || !ctx.current.children().isEmpty()) {
+            addIfNotEmpty(ctx.current, ctx.builders);
         }
         if (toRoot) {
-            rootBuilder.append(collapse(builders));
-            builders.clear();
+            ctx.rootBuilder.append(collapse(ctx.builders));
+            ctx.builders.clear();
         }
-        current = Component.text();
+        ctx.current = Component.text();
     }
 
     private void processPlaceholders(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements) {
@@ -498,7 +703,7 @@ public class EnhancedLegacyTextParser extends ParserSpec {
 
             Matcher matcher = pattern.matcher(input);
             if (matcher.find()) {
-                contentBuilder.setLength(0);
+                ctx.content.setLength(0);
                 int start = matcher.start();
                 int end = matcher.end();
 
@@ -515,44 +720,39 @@ public class EnhancedLegacyTextParser extends ParserSpec {
                     replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
                 }
 
-                if (replacement instanceof Component) {
-                    builders.add(replacement instanceof BuildableComponent
+                if (replacement instanceof ComponentLike) {
+                    ctx.builders.add(replacement instanceof BuildableComponent
                                  ? ((BuildableComponent<?, ?>) replacement).toBuilder()
-                                 : Component.text().append((Component) replacement)
+                                 : Component.text().append((ComponentLike) replacement)
                     );
-                    newChild.set(false);
-
-                    anyMatch = true;
-                } else if (replacement instanceof ComponentBuilder) {
-                    builders.add((ComponentBuilder<?, ?>) replacement);
-                    newChild.set(false);
+                    ctx.newChild.set(false);
 
                     anyMatch = true;
                 } else if (replacement instanceof TextFormat || replacement instanceof Style) {
-                    addIfNotEmpty(current, builders);
-                    current = Component.text();
+                    addIfNotEmpty(ctx.current, ctx.builders);
+                    ctx.current = Component.text();
 
-                    newChild.set(true);
+                    ctx.newChild.set(true);
                     if (replacement instanceof TextColor || replacement instanceof Style) {
                         TextColor color;
                         if (replacement instanceof Style) {
                             Style style = (Style) replacement;
-                            current.style(style);
+                            ctx.current.style(style);
                             color = style.color();
                         } else {
                             color = (TextColor) replacement;
-                            current.color(color);
+                            ctx.current.color(color);
                         }
                         if (color != null && colorResets) {
-                            builders.add(current);
-                            rootBuilder.append(collapse(builders));
-                            builders.clear();
+                            ctx.builders.add(ctx.current);
+                            ctx.rootBuilder.append(collapse(ctx.builders));
+                            ctx.builders.clear();
                         }
 
                         anyMatch = true;
                         break;
                     } else if (replacement instanceof TextDecoration) {
-                        current.decorate((TextDecoration) replacement);
+                        ctx.current.decorate((TextDecoration) replacement);
 
                         anyMatch = true;
                         break;
