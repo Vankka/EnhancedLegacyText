@@ -34,16 +34,16 @@ public class DecorationTests {
     @Test
     public void boldTest() {
         Component reference = Component.text()
-                .content("bold ")
+                .content("bold")
                 .decorate(TextDecoration.BOLD)
                 .append(
                         Component.text()
-                                .content("normal")
+                                .content(" normal")
                                 .decoration(TextDecoration.BOLD, false)
                 )
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[bold]bold [bold]normal").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[bold:true]bold[bold:false] normal").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -55,7 +55,7 @@ public class DecorationTests {
                 .decorate(TextDecoration.ITALIC)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[italic]italic").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[italic:on]italic").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -67,7 +67,7 @@ public class DecorationTests {
                 .decorate(TextDecoration.ITALIC)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[italics]italics").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[italics:true]italics").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -79,7 +79,7 @@ public class DecorationTests {
                 .decorate(TextDecoration.STRIKETHROUGH)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[strikethrough]strikethrough").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[strikethrough:on]strikethrough").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -91,7 +91,7 @@ public class DecorationTests {
                 .decorate(TextDecoration.OBFUSCATED)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[obfuscated]obfuscated").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[obfuscated:on]obfuscated").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -99,16 +99,16 @@ public class DecorationTests {
     @Test
     public void obfuscatedTest2() {
         Component reference = Component.text()
-                .content("obfuscated ")
+                .content("obfuscated")
                 .decorate(TextDecoration.OBFUSCATED)
                 .append(
                         Component.text()
-                                .content("normal")
+                                .content(" normal")
                                 .decoration(TextDecoration.OBFUSCATED, false)
                 )
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[obfuscated]obfuscated [obfuscated]normal").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[obfuscated:on]obfuscated[obfuscated] normal").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -120,7 +120,7 @@ public class DecorationTests {
                 .decorate(TextDecoration.UNDERLINED)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[underlined]underlined").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[underlined:on]underlined").build();
 
         Assertions.assertEquals(reference, component);
     }
@@ -132,30 +132,18 @@ public class DecorationTests {
                 .decorate(TextDecoration.UNDERLINED)
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[underline]underline").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[underline:true]underline").build();
 
         Assertions.assertEquals(reference, component);
     }
 
     @Test
-    public void underlinedTest2() {
+    public void underlineInvalidValueTest() {
         Component reference = Component.text()
-                .content("underlined")
-                .decorate(TextDecoration.UNDERLINED)
+                .content("[underline:maybe]underline")
                 .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("[decoration:underlined]underlined").build();
-
-        Assertions.assertEquals(reference, component);
-    }
-
-    @Test
-    public void invalid() {
-        Component reference = Component.text()
-                .content("[decoration:invalid]invalid")
-                .build();
-
-        Component component = EnhancedLegacyText.get().buildComponent("[decoration:invalid]invalid").build();
+        Component component = EnhancedLegacyText.get().buildComponent("[underline:maybe]underline").build();
 
         Assertions.assertEquals(reference, component);
     }

@@ -31,6 +31,7 @@ import net.kyori.adventure.text.format.*;
 
 import java.awt.Color;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,7 +63,7 @@ public class EnhancedLegacyTextParser {
     private static final String NAMESPACE_HEX = "hex";
 
     // Square brackets prefixes
-    private static final List<Pair<String, ParseContext.SquareBracketStatus>> STATUS_TRANSITIONS = new ArrayList<>();
+    private static final List<Pair<String, Consumer<ParseContext>>> STATUS_TRANSITIONS = new ArrayList<>();
 
     // Formats
     private static final Map<String, TextDecoration> DECORATIONS = new HashMap<>(7);
@@ -72,16 +73,22 @@ public class EnhancedLegacyTextParser {
     private static final List<Pair<String, ClickEvent.Action>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
 
     static {
-        STATUS_TRANSITIONS.add(new Pair<>("color", COLOR));
-        STATUS_TRANSITIONS.add(new Pair<>("decoration", DECORATION));
-        STATUS_TRANSITIONS.add(new Pair<>("click", CLICK_TYPE));
-        STATUS_TRANSITIONS.add(new Pair<>("hover", HOVER_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>("color", ctx -> ctx.squareBracketStatus = COLOR));
+        STATUS_TRANSITIONS.add(new Pair<>("click", ctx -> ctx.squareBracketStatus = CLICK_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>("hover", ctx -> ctx.squareBracketStatus = HOVER_TYPE));
 
         for (TextDecoration value : TextDecoration.values()) {
             DECORATIONS.put(value.name().toLowerCase(Locale.ROOT), value);
         }
         DECORATIONS.put("italics", TextDecoration.ITALIC);
         DECORATIONS.put("underline", TextDecoration.UNDERLINED);
+
+        for (Map.Entry<String, TextDecoration> decoration : DECORATIONS.entrySet()) {
+            STATUS_TRANSITIONS.add(new Pair<>(decoration.getKey(), ctx -> {
+                ctx.squareBracketStatus = DECORATION;
+                ctx.squareBracketContext[0].append(decoration.getKey());
+            }));
+        }
 
         for (ClickEvent.Action value : ClickEvent.Action.values()) {
             if (value == ClickEvent.Action.OPEN_FILE) {
@@ -257,7 +264,14 @@ public class EnhancedLegacyTextParser {
                             return;
                         }
 
-                        flipDecoration(buffer);
+                        TextDecoration decoration = DECORATIONS.get(buffer);
+                        if (decoration != null) {
+                            decorate(decoration, false);
+                            reset();
+                            return;
+                        }
+
+                        rollback();
                         return;
                     }
                 }
@@ -270,15 +284,15 @@ public class EnhancedLegacyTextParser {
             if (squareBracketStatus == PREFIX) {
                 String buffer = ctx.squareBracketPrefix.toString();
                 if (c == SQUARE_BRACKET_DELIMITER && !escape) {
-                    for (Pair<String, ParseContext.SquareBracketStatus> transition : STATUS_TRANSITIONS) {
-                        if (contextCopy != null && transition.getValue().isEvent()) {
+                    for (Pair<String, Consumer<ParseContext>> transition : STATUS_TRANSITIONS) {
+                        String key = transition.getKey();
+                        if (contextCopy != null && (key.equals("click") || key.equals("hover"))) {
                             continue;
                         }
 
-                        String desired = transition.getKey();
-                        if (buffer.equals(desired)) {
+                        if (buffer.equals(key)) {
                             ctx.squareBracketPrefix.setLength(0);
-                            ctx.squareBracketStatus = transition.getValue();
+                            transition.getValue().accept(ctx);
                             return;
                         }
                     }
@@ -416,11 +430,33 @@ public class EnhancedLegacyTextParser {
             if (squareBracketStatus == DECORATION) {
                 if (c == SQUARE_BRACKET_END && !escape) {
                     String buffer = ctx.squareBracketContext[0].toString();
-                    flipDecoration(buffer);
+                    TextDecoration decoration = DECORATIONS.get(buffer);
+                    if (decoration == null) {
+                        throw new IllegalStateException("Impossible decoration: " + buffer);
+                    }
+
+                    boolean booleanValue;
+                    String value = ctx.squareBracketContext[1].toString();
+                    switch (value) {
+                        case "true":
+                        case "on":
+                            booleanValue = true;
+                            break;
+                        case "false":
+                        case "off":
+                            booleanValue = false;
+                            break;
+                        default:
+                            rollback();
+                            return;
+                    }
+
+                    decorate(decoration, booleanValue);
+                    reset();
                     return;
                 }
 
-                ctx.squareBracketContext[0].append(c);
+                ctx.squareBracketContext[1].append(c);
                 return;
             }
 
@@ -547,18 +583,6 @@ public class EnhancedLegacyTextParser {
             // Clear up the existing text buffer first
             appendContent(false, true, true);
         }
-    }
-
-    private void flipDecoration(String value) {
-        TextDecoration decoration = DECORATIONS.get(value);
-        if (decoration != null) {
-            boolean isDecorated = ctx.current.build().decoration(decoration) == TextDecoration.State.TRUE;
-            decorate(decoration, !isDecorated);
-            reset();
-            return;
-        }
-
-        rollback();
     }
 
     private void applyColor(TextColor color) {
