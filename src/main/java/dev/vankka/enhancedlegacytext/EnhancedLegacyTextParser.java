@@ -123,11 +123,17 @@ public class EnhancedLegacyTextParser {
         this.legacy = legacy;
         this.adventureHex = adventureHex;
         this.recursiveReplacement = recursiveReplacement;
-        this.ctx = new ParseContext();
-        processPlaceholders(input, replacements);
 
+        ParseContext contextBeforeParse = ctx;
+        ParseContext contextCopyBeforeParse = contextCopy;
+        this.ctx = new ParseContext();
+        this.contextCopy = null;
+
+        processPlaceholders(input, replacements);
         Component output = out();
-        ctx = null;
+
+        ctx = contextBeforeParse;
+        contextCopy = contextCopyBeforeParse;
         return output;
     }
 
