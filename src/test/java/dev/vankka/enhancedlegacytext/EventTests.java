@@ -27,6 +27,7 @@ package dev.vankka.enhancedlegacytext;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -211,6 +212,30 @@ public class EventTests {
                         .build();
 
         Component component = EnhancedLegacyText.get().buildComponent("[hover:show_text:a&lbold").build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
+    public void hoverPlaceholderTest() {
+        Component placeholderValue = Component.text("test").color(NamedTextColor.GREEN);
+
+        Component reference =
+                Component.text()
+                        .append(
+                                Component.text()
+                                        .content("ctn")
+                                        .hoverEvent(placeholderValue)
+                        )
+                        .append(
+                                Component.text(" hello")
+                        )
+                        .build();
+
+        Component component = EnhancedLegacyText.get()
+                .buildComponent("[hover:show_text:%test%]ctn[hover] hello")
+                .replace("%test%", placeholderValue)
+                .build();
 
         Assertions.assertEquals(reference, component);
     }

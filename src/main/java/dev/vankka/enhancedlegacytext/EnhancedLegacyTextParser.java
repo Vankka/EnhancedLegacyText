@@ -130,14 +130,18 @@ public class EnhancedLegacyTextParser {
         this.contextCopy = null;
 
         processPlaceholders(input, replacements);
-        Component output = out();
+        Component output = out(false);
 
         ctx = contextBeforeParse;
         contextCopy = contextCopyBeforeParse;
         return output;
     }
 
-    private Component out() {
+    private Component out(boolean skipStatusCheck) {
+        if (!skipStatusCheck && ctx.squareBracketStatus != NONE) {
+            rollback();
+        }
+
         // Append remaining content
         appendContent(
                 true,
@@ -196,10 +200,7 @@ public class EnhancedLegacyTextParser {
             parseCharacter(c);
         }
 
-        if (ctx.squareBracketStatus != NONE) {
-            rollback();
-        }
-        if (ctx.content.length() > 0) {
+        if (ctx.content.length() > 0 && ctx.squareBracketStatus == NONE) {
             appendContent(false, true, false);
         }
     }
@@ -303,7 +304,15 @@ public class EnhancedLegacyTextParser {
 
                     if (hover) {
                         for (String event : ACCEPTABLE_HOVER_EVENTS) {
-                            if (event.equals(buffer)) {
+                            if (event.equals(SHOW_TEXT)) {
+                                clearExistingContent();
+
+                                contextCopy = ctx;
+                                ctx = new ParseContext();
+                                ctx.squareBracketStatus = HOVER_VALUE;
+                                ctx.squareBracketContext[0] = contextCopy.squareBracketContext[0];
+                                return;
+                            } else if (event.equals(buffer)) {
                                 ctx.squareBracketStatus = HOVER_VALUE;
                                 return;
                             }
@@ -333,13 +342,9 @@ public class EnhancedLegacyTextParser {
 
                     if (hover) {
                         if (type.equals(SHOW_TEXT)) {
-                            clearExistingContent();
-
-                            contextCopy = ctx;
-                            ctx = new ParseContext();
                             parse(valueBuffer);
 
-                            Component component = out();
+                            Component component = out(true);
 
                             ctx = contextCopy;
                             contextCopy = null;
