@@ -228,11 +228,6 @@ public class EnhancedLegacyTextParser {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
                     case "hover": {
-                        if (ctx.hoverEvent == null) {
-                            rollback();
-                            return;
-                        }
-
                         if (!ctx.newChild.get()) {
                             appendContent(true, true, false);
                         }
@@ -240,11 +235,6 @@ public class EnhancedLegacyTextParser {
                         break;
                     }
                     case "click": {
-                        if (ctx.clickEvent == null) {
-                            rollback();
-                            return;
-                        }
-
                         if (!ctx.newChild.get()) {
                             appendContent(true, true, false);
                         }
@@ -252,11 +242,6 @@ public class EnhancedLegacyTextParser {
                         break;
                     }
                     case "color": {
-                        if (ctx.current.build().color() == null) {
-                            rollback();
-                            return;
-                        }
-
                         if (!ctx.newChild.get()) {
                             appendContent(true, true, false);
                         }

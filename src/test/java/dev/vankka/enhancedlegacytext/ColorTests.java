@@ -33,19 +33,6 @@ import org.junit.jupiter.api.Test;
 public class ColorTests {
 
     @Test
-    public void invalidReset() {
-        Component reference =
-                Component.text()
-                        .content("[color]test")
-                        .build();
-
-        Component component = EnhancedLegacyText.get().buildComponent("[color]test").build();
-
-        Assertions.assertEquals(reference, component);
-    }
-
-
-    @Test
     public void invalidHexPosition() {
         Component reference =
                 Component.text()

@@ -62,34 +62,6 @@ public class EventTests {
     }
 
     @Test
-    public void noHoverTypeTest() {
-        Component reference =
-                Component.text()
-                        .content("[hover]test")
-                        .build();
-
-        Component component = EnhancedLegacyText.get()
-                .buildComponent("[hover]test")
-                .build();
-
-        Assertions.assertEquals(reference, component);
-    }
-
-    @Test
-    public void noClickTypeTest() {
-        Component reference =
-                Component.text()
-                        .content("[click]test")
-                        .build();
-
-        Component component = EnhancedLegacyText.get()
-                .buildComponent("[click]test")
-                .build();
-
-        Assertions.assertEquals(reference, component);
-    }
-
-    @Test
     public void invalidTypeTest() {
         Component reference =
                 Component.text()
