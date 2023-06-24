@@ -528,7 +528,6 @@ public class EnhancedLegacyTextParser {
                     ctx.gradientColors.clear();
                     ctx.clickEvent = null;
                     ctx.hoverEvent = null;
-                    ctx.newChild.set(true);
                 } else if (legacy instanceof TextColor) {
                     TextColor color = (TextColor) legacy;
                     if (ctx.gradient) {
@@ -661,7 +660,9 @@ public class EnhancedLegacyTextParser {
                     true,
                     false
             );
-            ctx.newChild.set(true);
+            if (colorResets) {
+                ctx.newChild.set(true);
+            }
         }
         ctx.current.color(textColor);
     }
@@ -672,7 +673,6 @@ public class EnhancedLegacyTextParser {
         } else {
             appendContent(false, true, false);
             ctx.current.decoration(decoration, state);
-            ctx.newChild.set(true);
         }
     }
 
@@ -718,6 +718,7 @@ public class EnhancedLegacyTextParser {
             ctx.builders.clear();
         }
         ctx.current = Component.text();
+        ctx.newChild.set(true);
     }
 
     private void processPlaceholders(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements) {
@@ -758,8 +759,8 @@ public class EnhancedLegacyTextParser {
                 } else if (replacement instanceof TextFormat || replacement instanceof Style) {
                     addIfNotEmpty(ctx.current, ctx.builders);
                     ctx.current = Component.text();
-
                     ctx.newChild.set(true);
+
                     if (replacement instanceof TextColor || replacement instanceof Style) {
                         TextColor color;
                         if (replacement instanceof Style) {

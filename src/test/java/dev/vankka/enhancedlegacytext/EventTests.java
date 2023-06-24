@@ -239,4 +239,24 @@ public class EventTests {
 
         Assertions.assertEquals(reference, component);
     }
+
+    @Test
+    public void hoverResetTest() {
+        Component reference =
+                Component.text()
+                        .append(
+                                Component.text()
+                                        .content("first")
+                                        .hoverEvent(HoverEvent.showText(Component.text("hover")))
+                        )
+                        .append(
+                                Component.text()
+                                        .content("second")
+                        )
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[hover:show_text:hover]first[hover]second").build();
+
+        Assertions.assertEquals(reference, component);
+    }
 }
