@@ -68,8 +68,7 @@ public class EnhancedLegacyTextParser {
     // Formats
     private static final Map<String, TextDecoration> DECORATIONS = new HashMap<>(7);
 
-    // Hover & click events
-    private static final List<String> ACCEPTABLE_HOVER_EVENTS = Collections.singletonList(SHOW_TEXT);
+    // Click events
     private static final List<Pair<String, ClickEvent.Action>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
 
     static {
@@ -138,8 +137,14 @@ public class EnhancedLegacyTextParser {
     }
 
     private Component out(boolean skipStatusCheck) {
-        if (!skipStatusCheck && ctx.squareBracketStatus != NONE) {
-            rollback();
+        if (!skipStatusCheck) {
+            if (contextCopy != null) {
+                ctx = contextCopy;
+                contextCopy = null;
+                rollback();
+            } else if (ctx.squareBracketStatus != NONE) {
+                rollback();
+            }
         }
 
         // Append remaining content
@@ -206,6 +211,10 @@ public class EnhancedLegacyTextParser {
     }
 
     private void parseCharacter(char c) {
+        if (contextCopy != null) {
+            contextCopy.rollbackBuffer.append(c);
+        }
+
         boolean escape = ctx.escape;
         if (escape) {
             ctx.escape = false;
@@ -303,19 +312,14 @@ public class EnhancedLegacyTextParser {
                     String buffer = ctx.squareBracketContext[0].toString();
 
                     if (hover) {
-                        for (String event : ACCEPTABLE_HOVER_EVENTS) {
-                            if (event.equals(SHOW_TEXT)) {
-                                clearExistingContent();
+                        if (buffer.equals(SHOW_TEXT)) {
+                            clearExistingContent();
 
-                                contextCopy = ctx;
-                                ctx = new ParseContext();
-                                ctx.squareBracketStatus = HOVER_VALUE;
-                                ctx.squareBracketContext[0] = contextCopy.squareBracketContext[0];
-                                return;
-                            } else if (event.equals(buffer)) {
-                                ctx.squareBracketStatus = HOVER_VALUE;
-                                return;
-                            }
+                            ctx.squareBracketStatus = HOVER_VALUE;
+                            contextCopy = ctx;
+
+                            ctx = new ParseContext();
+                            return;
                         }
                     } else /* click */ {
                         for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
@@ -341,18 +345,7 @@ public class EnhancedLegacyTextParser {
                     String valueBuffer = ctx.squareBracketContext[1].toString();
 
                     if (hover) {
-                        if (type.equals(SHOW_TEXT)) {
-                            parse(valueBuffer);
-
-                            Component component = out(true);
-
-                            ctx = contextCopy;
-                            contextCopy = null;
-
-                            ctx.hoverEvent = HoverEvent.showText(component);
-                        } else {
-                            throw new IllegalStateException("Impossible hover type: " + type);
-                        }
+                        throw new IllegalStateException("Impossible hover type: " + type);
                     } else /* click */ {
                         ClickEvent.Action action = null;
                         for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
@@ -460,6 +453,18 @@ public class EnhancedLegacyTextParser {
         } else if (c == SQUARE_BRACKET_START && !escape) {
             bufferForRollback(c);
             ctx.squareBracketStatus = PREFIX;
+            return;
+        }
+
+        if (c == SQUARE_BRACKET_END && contextCopy != null) {
+            Component component = out(true);
+
+            ctx = contextCopy;
+            contextCopy = null;
+
+            ctx.hoverEvent = HoverEvent.showText(component);
+            reset();
+            ctx.rollbackBuffer.setLength(0);
             return;
         }
 
