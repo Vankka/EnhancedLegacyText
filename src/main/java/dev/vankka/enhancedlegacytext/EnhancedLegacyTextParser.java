@@ -238,16 +238,12 @@ public class EnhancedLegacyTextParser {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
                     case "hover": {
-                        if (!ctx.newChild.get()) {
-                            appendContent(true, true, false);
-                        }
+                        appendContent(true, true, false);
                         ctx.hoverEvent = null;
                         break;
                     }
                     case "click": {
-                        if (!ctx.newChild.get()) {
-                            appendContent(true, true, false);
-                        }
+                        appendContent(true, true, false);
                         ctx.clickEvent = null;
                         break;
                     }
