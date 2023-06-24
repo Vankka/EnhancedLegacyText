@@ -477,12 +477,13 @@ public class EnhancedLegacyTextParser {
             if (ctx.hexColor) {
                 for (int i = 0; i < 6; i++) {
                     if (ctx.hex[i] == Character.MIN_VALUE) {
-                        if (!Colors.HEX_CHARACTERS.contains(Character.toString(c))) {
+                        char character = Character.toLowerCase(c);
+                        if (!Colors.HEX_CHARACTERS.contains(Character.toString(character))) {
                             rollback();
                             return;
                         }
 
-                        ctx.hex[i] = c;
+                        ctx.hex[i] = character;
                         if (i != 5) {
                             return;
                         }
