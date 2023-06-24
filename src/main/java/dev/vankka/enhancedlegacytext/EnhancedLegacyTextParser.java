@@ -625,6 +625,7 @@ public class EnhancedLegacyTextParser {
             int length;
             if ((length = name.length()) == 3 || name.length() == 6) {
                 boolean isHex = true;
+                name = name.toLowerCase(Locale.ROOT);
                 for (int i = 0; i < name.length(); i++) {
                     if (!Colors.HEX_CHARACTERS.contains(Character.toString(name.charAt(i)))) {
                         isHex = false;

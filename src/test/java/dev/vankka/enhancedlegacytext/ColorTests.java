@@ -78,6 +78,32 @@ public class ColorTests {
     }
 
     @Test
+    public void colorHexTest() {
+        Component reference =
+                Component.text()
+                        .content("test")
+                        .color(TextColor.fromHexString("#aabbcc"))
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[color:hex:aabbcc]test").build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
+    public void colorHexUpperTest() {
+        Component reference =
+                Component.text()
+                        .content("test")
+                        .color(TextColor.fromHexString("#AABBCC"))
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[color:hex:AABBCC]test").build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
     public void colorCSSTest() {
         Component reference =
                 Component.text()
