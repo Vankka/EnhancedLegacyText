@@ -175,6 +175,7 @@ public class EnhancedLegacyTextParser {
 
         // First character as normal content
         ctx.content.append(ctx.rollbackBuffer.charAt(0));
+        ctx.newChild.set(false);
 
         String end = ctx.rollbackBuffer.substring(1);
         ctx.rollbackBuffer.setLength(0);
@@ -599,6 +600,7 @@ public class EnhancedLegacyTextParser {
         } else {
             colorize(color);
             reset();
+            ctx.rollbackBuffer.setLength(0);
         }
     }
 

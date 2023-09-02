@@ -45,6 +45,24 @@ public class ColorTests {
     }
 
     @Test
+    public void colorNonRollbackTest() {
+        Component reference =
+                Component.text()
+                        .content("[")
+                        .color(TextColor.color(0x808080))
+                        .append(
+                                Component.text()
+                                        .content("[")
+                                        .color(TextColor.color(0x080808))
+                        )
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[color:#808080][[color:#080808][").build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
     public void colorRemoveTest() {
         Component reference =
                 Component.text()
