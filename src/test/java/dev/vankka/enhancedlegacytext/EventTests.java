@@ -95,7 +95,7 @@ public class EventTests {
     public void hoverShowTextTest() {
         Component reference =
                 Component.text()
-                        .content("a")
+                        .append(Component.text("a"))
                         .append(
                                 Component.text()
                                         .content("b")
@@ -116,26 +116,20 @@ public class EventTests {
     @Test
     public void hoverShowTextEndTest() {
         Component reference =
-                Component.text()
-                        .append(
-                                Component.text()
-                                        .content("a")
-                                        .append(
-                                                Component.text()
-                                                        .content("some text")
-                                                        .hoverEvent(
-                                                                HoverEvent.showText(
-                                                                        Component.text("hi")
-                                                                                .decorate(TextDecoration.BOLD)
-                                                                )
+                        Component.text()
+                                .append(Component.text("a"))
+                                .append(
+                                        Component.text()
+                                                .content("some text")
+                                                .hoverEvent(
+                                                        HoverEvent.showText(
+                                                                Component.text("hi")
+                                                                        .decorate(TextDecoration.BOLD)
                                                         )
-                                        )
-                        )
-                        .append(
-                                Component.text()
-                                        .content(" more text")
-                        )
-                        .build();
+                                                )
+                                )
+                                .append(Component.text(" more text"))
+                                .build();
 
         Component component = EnhancedLegacyText.get().buildComponent("a[hover:show_text:&lhi]some text[hover] more text").build();
 
@@ -146,7 +140,7 @@ public class EventTests {
     public void clickSuggestCommandTest() {
         Component reference =
                 Component.text()
-                        .content("a")
+                        .append(Component.text("a"))
                         .append(
                                 Component.text()
                                         .content("b")
@@ -165,21 +159,15 @@ public class EventTests {
     public void clickSuggestCommandEndTest() {
         Component reference =
                 Component.text()
+                        .append(Component.text("a"))
                         .append(
                                 Component.text()
-                                        .content("a")
-                                        .append(
-                                                Component.text()
-                                                        .content("b ")
-                                                        .clickEvent(
-                                                                ClickEvent.suggestCommand("/a")
-                                                        )
+                                        .content("b ")
+                                        .clickEvent(
+                                                ClickEvent.suggestCommand("/a")
                                         )
                         )
-                        .append(
-                                Component.text()
-                                        .content("c")
-                        )
+                        .append(Component.text("c"))
                         .build();
 
         Component component = EnhancedLegacyText.get().buildComponent("a[click:suggest_command:/a]b [click]c").build();

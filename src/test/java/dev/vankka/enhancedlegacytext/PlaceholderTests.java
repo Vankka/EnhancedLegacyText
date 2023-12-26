@@ -141,16 +141,16 @@ public class PlaceholderTests {
     public void placeholderTest() {
         Component reference =
                 Component.text()
-                        .content("test")
+                        .append(Component.text("test"))
                         .append(
-                                Component.text(": ")
-                                        .append(
-                                                Component.text("hello")
-                                        )
+                                Component.text()
+                                        .content(": ")
+                                        .color(NamedTextColor.GREEN)
+                                        .append(Component.text("hello"))
                         )
                         .build();
 
-        Component component = EnhancedLegacyText.get().buildComponent("%a: %b")
+        Component component = EnhancedLegacyText.get().buildComponent("%a&a: %b")
                 .replace("%a", Component.text("test"))
                 .replace("%b", Component.text("hello"))
                 .build();
@@ -202,5 +202,22 @@ public class PlaceholderTests {
     @Test
     public void recursiveReplacementForwardRecursiveTest() {
         Assertions.assertEquals("c", recursive2(RecursiveReplacement.YES));
+    }
+
+    @Test
+    public void colorComponentPlaceholder() {
+        Component reference =
+                Component.text()
+                        .color(NamedTextColor.GREEN)
+                        .append(
+                                Component.text("test")
+                        )
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("&a%a")
+                .replace("%a", Component.text("test"))
+                .build();
+
+        Assertions.assertEquals(reference, component);
     }
 }

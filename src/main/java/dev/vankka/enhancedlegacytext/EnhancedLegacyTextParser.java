@@ -108,7 +108,7 @@ public class EnhancedLegacyTextParser {
 
     private EnhancedLegacyTextParser() {}
 
-    public Component parseToComponent(
+    Component parseToComponent(
             char colorChar,
             boolean colorResets,
             boolean legacy,
@@ -136,8 +136,8 @@ public class EnhancedLegacyTextParser {
         return output;
     }
 
-    private Component out(boolean skipStatusCheck) {
-        if (!skipStatusCheck) {
+    private Component out(boolean skipRollbackCheck) {
+        if (!skipRollbackCheck) {
             if (contextCopy != null) {
                 ctx = contextCopy;
                 contextCopy = null;
@@ -148,11 +148,7 @@ public class EnhancedLegacyTextParser {
         }
 
         // Append remaining content
-        appendContent(
-                true,
-                false,
-                false
-        );
+        appendContent(true);
 
         // Simplify the output component if possible
         List<Component> rootChildren = ctx.rootBuilder.children();
@@ -207,7 +203,7 @@ public class EnhancedLegacyTextParser {
         }
 
         if (ctx.content.length() > 0 && ctx.squareBracketStatus == NONE) {
-            appendContent(false, true, false);
+            appendContent(false);
         }
     }
 
@@ -239,19 +235,17 @@ public class EnhancedLegacyTextParser {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
                     case "hover": {
-                        appendContent(true, true, false);
+                        clearExistingContent();
                         ctx.hoverEvent = null;
                         break;
                     }
                     case "click": {
-                        appendContent(true, true, false);
+                        clearExistingContent();
                         ctx.clickEvent = null;
                         break;
                     }
                     case "color": {
-                        if (!ctx.newChild.get()) {
-                            appendContent(true, true, false);
-                        }
+                        clearExistingContent();
                         colorize(null);
                         break;
                     }
@@ -355,10 +349,8 @@ public class EnhancedLegacyTextParser {
                             throw new IllegalStateException("Impossible click type: " + type);
                         }
 
-                        if (!ctx.newChild.get()) {
-                            // Clear up the existing text buffer first
-                            appendContent(false, true, true);
-                        }
+                        // Clear up the existing text buffer first
+                        clearExistingContent();
 
                         ctx.clickEvent = ClickEvent.clickEvent(action, valueBuffer);
                     }
@@ -493,10 +485,8 @@ public class EnhancedLegacyTextParser {
                 ctx.hexColor = false;
 
                 if (ctx.gradient) {
-                    if (!ctx.newChild.get()) {
-                        // Clear up the existing text buffer first
-                        appendContent(false, true, false);
-                    }
+                    // Clear up the existing text buffer first
+                    clearExistingContent();
                     ctx.gradientColors.add(color);
                     ctx.gradientDelimiter = true;
                     Arrays.fill(ctx.hex, Character.MIN_VALUE);
@@ -517,11 +507,7 @@ public class EnhancedLegacyTextParser {
                 }
 
                 if (legacy == Colors.RESET) {
-                    appendContent(
-                            true,
-                            true,
-                            false
-                    );
+                    appendContent(true);
                     ctx.gradientColors.clear();
                     ctx.clickEvent = null;
                     ctx.hoverEvent = null;
@@ -579,7 +565,7 @@ public class EnhancedLegacyTextParser {
     private void clearExistingContent() {
         if (!ctx.newChild.get()) {
             // Clear up the existing text buffer first
-            appendContent(false, true, true);
+            appendContent(true);
         }
     }
 
@@ -587,7 +573,7 @@ public class EnhancedLegacyTextParser {
         if (ctx.gradient) {
             if (!ctx.newChild.get()) {
                 // Clear up the existing text buffer first
-                appendContent(false, true, false);
+                appendContent(false);
             }
             ctx.gradientColors.add(color);
             ctx.gradientDelimiter = true;
@@ -653,11 +639,7 @@ public class EnhancedLegacyTextParser {
 
     private void colorize(TextColor textColor) {
         if (colorResets || !ctx.newChild.get()) {
-            appendContent(
-                    colorResets,
-                    true,
-                    false
-            );
+            appendContent(colorResets);
             if (colorResets) {
                 ctx.newChild.set(true);
             }
@@ -669,16 +651,16 @@ public class EnhancedLegacyTextParser {
         if (ctx.newChild.get()) {
             ctx.current.decoration(decoration, state);
         } else {
-            appendContent(false, true, false);
+            appendContent(false);
             ctx.current.decoration(decoration, state);
         }
     }
 
-    private void appendContent(
-            boolean toRoot,
-            boolean allowEmpty,
-            boolean noGradients
-    ) {
+    private void appendContent(boolean toRoot) {
+        appendContent(toRoot, false, false);
+    }
+
+    private void appendContent(boolean toRoot, boolean noGradients, boolean allowEmpty) {
         StringBuilder contentBuilder = ctx.content;
         List<TextColor> gradientColors = noGradients ? Collections.emptyList() : ctx.gradientColors;
         ClickEvent clickEvent = ctx.clickEvent;
@@ -708,7 +690,7 @@ public class EnhancedLegacyTextParser {
             ctx.current.clickEvent(clickEvent);
         }
 
-        if (allowEmpty || ctx.current.content().length() > 0 || !ctx.current.children().isEmpty()) {
+        if (allowEmpty || !ctx.current.content().isEmpty() || !ctx.current.children().isEmpty()) {
             addIfNotEmpty(ctx.current, ctx.builders);
         }
         if (toRoot) {
@@ -747,11 +729,12 @@ public class EnhancedLegacyTextParser {
                 }
 
                 if (replacement instanceof ComponentLike) {
+                    appendContent(false, false, true);
                     ctx.builders.add(replacement instanceof BuildableComponent
                                  ? ((BuildableComponent<?, ?>) replacement).toBuilder()
                                  : Component.text().append((ComponentLike) replacement)
                     );
-                    ctx.newChild.set(false);
+                    appendContent(true);
 
                     anyMatch = true;
                 } else if (replacement instanceof TextFormat || replacement instanceof Style) {

@@ -73,15 +73,8 @@ public class LegacyTests {
     public void colorResetsTest() {
         Component reference =
                 Component.text()
-                        .append(
-                                Component.text()
-                                        .decorate(TextDecoration.BOLD)
-                        )
-                        .append(
-                                Component.text()
-                                        .content("just red")
-                                        .color(NamedTextColor.RED)
-                        )
+                        .content("just red")
+                        .color(NamedTextColor.RED)
                         .build();
 
         Component component = EnhancedLegacyText.builder().colorResets(true).build()
