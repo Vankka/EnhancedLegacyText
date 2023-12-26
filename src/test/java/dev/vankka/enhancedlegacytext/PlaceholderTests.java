@@ -26,6 +26,7 @@ package dev.vankka.enhancedlegacytext;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -215,6 +216,23 @@ public class PlaceholderTests {
                         .build();
 
         Component component = EnhancedLegacyText.get().buildComponent("&a%a")
+                .replace("%a", Component.text("test"))
+                .build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
+    public void hoverComponentPlaceholder() {
+        Component reference =
+                Component.text()
+                        .hoverEvent(HoverEvent.showText(Component.text("hi")))
+                        .append(
+                                Component.text("test")
+                        )
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[hover:show_text:hi]%a")
                 .replace("%a", Component.text("test"))
                 .build();
 
