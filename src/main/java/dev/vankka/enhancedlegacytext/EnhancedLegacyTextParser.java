@@ -235,12 +235,12 @@ public class EnhancedLegacyTextParser {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
                     case "hover": {
-                        clearExistingContent();
+                        appendContent(true);
                         ctx.hoverEvent = null;
                         break;
                     }
                     case "click": {
-                        clearExistingContent();
+                        appendContent(true);
                         ctx.clickEvent = null;
                         break;
                     }
@@ -693,7 +693,7 @@ public class EnhancedLegacyTextParser {
         if (allowEmpty || !ctx.current.content().isEmpty() || !ctx.current.children().isEmpty()) {
             addIfNotEmpty(ctx.current, ctx.builders);
         }
-        if (toRoot) {
+        if (toRoot && !ctx.builders.isEmpty()) {
             ctx.rootBuilder.append(collapse(ctx.builders));
             ctx.builders.clear();
         }
