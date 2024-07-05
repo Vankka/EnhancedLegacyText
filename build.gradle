@@ -1,7 +1,10 @@
 plugins {
+    id 'java'
     id 'java-library'
+    id 'signing'
     id 'maven-publish'
-    id 'org.cadixdev.licenser' version '0.6.0'
+    id 'net.kyori.indra.licenser.spotless' version '2.2.0'
+    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
 }
 
 group 'dev.vankka'
@@ -28,84 +31,64 @@ java {
     withSourcesJar()
 }
 
-jar {
-    finalizedBy licenseFormat
+indraSpotlessLicenser {
+    licenseHeaderFile(rootProject.file('buildscript/LICENSE_HEADER'))
+    newLine(true)
+    property('inception', '2021')
+    property('year_now', String.valueOf(Calendar.getInstance().get(Calendar.YEAR)))
 }
 
-license {
-    header = rootProject.file('LICENSE_HEADER')
-    properties {
-        String inception = '2021'
-        String currentYear = Calendar.getInstance().get(Calendar.YEAR)
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
 
-        year = inception == currentYear ? currentYear : inception + "-" + currentYear
-    }
-    include '**/*.java' // only java files
-}
+            pom {
+                name = project.name
+                packaging = 'jar'
+                description = 'An alternative input format for Adventure'
+                url = 'https://github.com/Vankka/EnhancedLegacyText'
 
-if (System.getenv('SONATYPE_KEY') == null && !project.hasProperty("signing.keyId")) {
-    // Don't even bother with signing/publishing if neither of these are set
-    return
-}
+                scm {
+                    connection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
+                    developerConnection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
+                    url = 'https://github.com/Vankka/DependencyDownload'
+                }
 
-task publishProject {
-    apply plugin: 'maven-publish'
-    apply plugin: 'signing'
-
-    dependsOn tasks.build
-
-    publishing {
-        publications {
-            maven(MavenPublication) {
-                from components.java
-
-                pom {
-                    name = project.name
-                    packaging = 'jar'
-                    description = 'An alternative input format for Adventure'
-                    url = 'https://github.com/Vankka/EnhancedLegacyText'
-
-                    scm {
-                        connection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
-                        developerConnection = 'scm:git:https://github.com/Vankka/EnhancedLegacyText.git'
-                        url = 'https://github.com/Vankka/DependencyDownload'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://www.opensource.org/licenses/mit-license.php'
                     }
+                }
 
-                    licenses {
-                        license {
-                            name = 'MIT License'
-                            url = 'https://www.opensource.org/licenses/mit-license.php'
-                        }
-                    }
-
-                    developers {
-                        developer {
-                            id = 'Vankka'
-                        }
+                developers {
+                    developer {
+                        id = 'Vankka'
                     }
                 }
             }
         }
+    }
+}
 
-        signing {
-            sign publishing.publications.maven
+if (System.getenv('SIGNING_KEY') != null || project.hasProperty("signing.keyId")) {
+    signing {
+        sign publishing.publications.maven
 
-            def key = System.getenv('SONATYPE_KEY')
-            if (key != null) {
-                useInMemoryPgpKeys(key, System.getenv('SONATYPE_KEY_PASS'))
-            }
-        }
-
-        repositories {
-            maven {
-                credentials {
-                    username findProperty('ossrhUsername')
-                    password findProperty('ossrhPassword')
-                }
-                url version.endsWith('-SNAPSHOT') ? 'https://s01.oss.sonatype.org/content/repositories/snapshots/' : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-            }
+        def key = System.getenv('SIGNING_KEY')
+        if (key != null) {
+            useInMemoryPgpKeys(key, System.getenv('SIGNING_KEY_PASS'))
         }
     }
+}
 
-    finalizedBy publish
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri('https://s01.oss.sonatype.org/service/local/'))
+            snapshotRepositoryUrl.set(uri('https://s01.oss.sonatype.org/content/repositories/snapshots/'))
+            packageGroup = rootProject.group
+        }
+    }
 }
