@@ -7,6 +7,9 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
 }
 
+sourceCompatability = JavaVersion.VERSION_1_8
+targetCompatability = JavaVersion.VERSION_1_8
+
 group 'dev.vankka'
 version '2.0.0-SNAPSHOT'
 
