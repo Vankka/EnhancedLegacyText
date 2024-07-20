@@ -54,6 +54,12 @@ public class EnhancedLegacyTextParser {
     private static final char GRADIENT_END = '}';
     private static final char HEX = '#';
 
+    // Status transitions
+    private static final String COLOR_TRANSITION = "color";
+    private static final String CLICK_TRANSITION = "click";
+    private static final String HOVER_TRANSITION = "hover";
+    private static final String INSERT_TRANSITION = "insert";
+
     // Hover event type
     private static final String SHOW_TEXT = "show_text";
 
@@ -72,9 +78,10 @@ public class EnhancedLegacyTextParser {
     private static final List<Pair<String, ClickEvent.Action>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
 
     static {
-        STATUS_TRANSITIONS.add(new Pair<>("color", ctx -> ctx.squareBracketStatus = COLOR));
-        STATUS_TRANSITIONS.add(new Pair<>("click", ctx -> ctx.squareBracketStatus = CLICK_TYPE));
-        STATUS_TRANSITIONS.add(new Pair<>("hover", ctx -> ctx.squareBracketStatus = HOVER_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>(COLOR_TRANSITION, ctx -> ctx.squareBracketStatus = COLOR));
+        STATUS_TRANSITIONS.add(new Pair<>(CLICK_TRANSITION, ctx -> ctx.squareBracketStatus = CLICK_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>(HOVER_TRANSITION, ctx -> ctx.squareBracketStatus = HOVER_TYPE));
+        STATUS_TRANSITIONS.add(new Pair<>(INSERT_TRANSITION, ctx -> ctx.squareBracketStatus = INSERTION));
 
         for (TextDecoration value : TextDecoration.values()) {
             DECORATIONS.put(value.name().toLowerCase(Locale.ROOT), value);
@@ -234,19 +241,24 @@ public class EnhancedLegacyTextParser {
             if (c == SQUARE_BRACKET_END && !escape && squareBracketStatus == PREFIX) {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
-                    case "hover": {
-                        appendContent(true);
-                        ctx.hoverEvent = null;
+                    case COLOR_TRANSITION: {
+                        clearExistingContent();
+                        colorize(null);
                         break;
                     }
-                    case "click": {
+                    case CLICK_TRANSITION: {
                         appendContent(true);
                         ctx.clickEvent = null;
                         break;
                     }
-                    case "color": {
-                        clearExistingContent();
-                        colorize(null);
+                    case HOVER_TRANSITION: {
+                        appendContent(true);
+                        ctx.hoverEvent = null;
+                        break;
+                    }
+                    case INSERT_TRANSITION: {
+                        appendContent(true);
+                        ctx.insertion = null;
                         break;
                     }
                     default: {
@@ -278,7 +290,7 @@ public class EnhancedLegacyTextParser {
                 if (c == SQUARE_BRACKET_DELIMITER && !escape) {
                     for (Pair<String, Consumer<ParseContext>> transition : STATUS_TRANSITIONS) {
                         String key = transition.getKey();
-                        if (contextCopy != null && (key.equals("click") || key.equals("hover"))) {
+                        if (contextCopy != null && (key.equals(CLICK_TRANSITION) || key.equals(HOVER_TRANSITION))) {
                             continue;
                         }
 
@@ -361,6 +373,26 @@ public class EnhancedLegacyTextParser {
                 }
 
                 ctx.squareBracketContext[1].append(c);
+                return;
+            }
+
+            if (squareBracketStatus == INSERTION) {
+                if (c == SQUARE_BRACKET_END && !escape) {
+                    String insert = ctx.squareBracketContext[0].toString();
+
+                    // Clear up the existing text buffer first
+                    clearExistingContent();
+
+                    if (insert.isEmpty()) {
+                        ctx.insertion = null;
+                    } else {
+                        ctx.insertion = insert;
+                    }
+                    reset();
+                    return;
+                }
+
+                ctx.squareBracketContext[0].append(c);
                 return;
             }
 
@@ -665,6 +697,7 @@ public class EnhancedLegacyTextParser {
         List<TextColor> gradientColors = noGradients ? Collections.emptyList() : ctx.gradientColors;
         ClickEvent clickEvent = ctx.clickEvent;
         HoverEvent<?> hoverEvent = ctx.hoverEvent;
+        String insertion = ctx.insertion;
 
         if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
             addIfNotEmpty(ctx.current, ctx.builders);
@@ -688,6 +721,9 @@ public class EnhancedLegacyTextParser {
         }
         if (clickEvent != null) {
             ctx.current.clickEvent(clickEvent);
+        }
+        if (insertion != null) {
+            ctx.current.insertion(insertion);
         }
 
         if (allowEmpty || !ctx.current.content().isEmpty() || !ctx.current.children().isEmpty()) {

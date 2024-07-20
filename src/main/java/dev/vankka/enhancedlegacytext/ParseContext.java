@@ -54,6 +54,7 @@ class ParseContext {
 
     final StringBuilder content = new StringBuilder();
 
+    String insertion;
     ClickEvent clickEvent;
     HoverEvent<?> hoverEvent;
 
@@ -66,6 +67,8 @@ class ParseContext {
 
         NONE,
         PREFIX,
+
+        INSERTION,
 
         CLICK_TYPE(true),
         CLICK_VALUE(true),
