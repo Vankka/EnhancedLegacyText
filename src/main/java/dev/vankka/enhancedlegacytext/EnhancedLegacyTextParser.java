@@ -204,6 +204,11 @@ public class EnhancedLegacyTextParser {
         ctx.gradientDelimiter = false;
     }
 
+    private void resetPrefix() {
+        reset();
+        ctx.rollbackBuffer.setLength(0);
+    }
+
     private void parse(String parseIn) {
         for (char c : parseIn.toCharArray()) {
             parseCharacter(c);
@@ -271,7 +276,7 @@ public class EnhancedLegacyTextParser {
                         TextDecoration decoration = DECORATIONS.get(buffer);
                         if (decoration != null) {
                             decorate(decoration, false);
-                            reset();
+                            resetPrefix();
                             return;
                         }
 
@@ -280,8 +285,7 @@ public class EnhancedLegacyTextParser {
                     }
                 }
 
-                reset();
-                ctx.rollbackBuffer.setLength(0);
+                resetPrefix();
                 return;
             }
 
@@ -367,8 +371,7 @@ public class EnhancedLegacyTextParser {
                         ctx.clickEvent = ClickEvent.clickEvent(action, valueBuffer);
                     }
 
-                    reset();
-                    ctx.rollbackBuffer.setLength(0);
+                    resetPrefix();
                     return;
                 }
 
@@ -389,8 +392,7 @@ public class EnhancedLegacyTextParser {
                         ctx.insertion = insert;
                     }
 
-                    reset();
-                    ctx.rollbackBuffer.setLength(0);
+                    resetPrefix();
                     return;
                 }
 
@@ -486,8 +488,7 @@ public class EnhancedLegacyTextParser {
             contextCopy = null;
 
             ctx.hoverEvent = HoverEvent.showText(component);
-            reset();
-            ctx.rollbackBuffer.setLength(0);
+            resetPrefix();
             return;
         }
 
@@ -563,8 +564,7 @@ public class EnhancedLegacyTextParser {
                 } else {
                     throw new IllegalStateException(legacy.getClass().getName() + " is not a known TextFormat");
                 }
-                reset();
-                ctx.rollbackBuffer.setLength(0);
+                resetPrefix();
             }
             return;
         }
@@ -619,8 +619,7 @@ public class EnhancedLegacyTextParser {
             }
         } else {
             colorize(color);
-            reset();
-            ctx.rollbackBuffer.setLength(0);
+            resetPrefix();
         }
     }
 
