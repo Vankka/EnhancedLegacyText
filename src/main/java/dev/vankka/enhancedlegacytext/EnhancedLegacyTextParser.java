@@ -388,7 +388,9 @@ public class EnhancedLegacyTextParser {
                     } else {
                         ctx.insertion = insert;
                     }
+
                     reset();
+                    ctx.rollbackBuffer.setLength(0);
                     return;
                 }
 
