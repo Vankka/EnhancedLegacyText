@@ -247,4 +247,17 @@ public class EventTests {
 
         Assertions.assertEquals(reference, component);
     }
+
+    @Test
+    public void hoverEscapeTest() {
+        Component reference =
+                Component.text()
+                        .content("content")
+                        .hoverEvent(HoverEvent.showText(Component.text("]")))
+                        .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent("[hover:show_text:\\]]content[hover]").build();
+
+        Assertions.assertEquals(reference, component);
+    }
 }

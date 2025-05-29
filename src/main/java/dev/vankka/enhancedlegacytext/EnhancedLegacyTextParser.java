@@ -33,6 +33,7 @@ import java.awt.Color;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -232,18 +233,20 @@ public class EnhancedLegacyTextParser {
             return;
         }
 
+        Predicate<Character> controlMatcher = controlCharacter -> !escape && c == controlCharacter;
+
         // Square brackets
         ParseContext.SquareBracketStatus squareBracketStatus = ctx.squareBracketStatus;
         if (squareBracketStatus != NONE) {
             bufferForRollback(c);
 
-            if (c == SQUARE_BRACKET_END && !escape && (squareBracketStatus == HOVER_TYPE || squareBracketStatus == CLICK_TYPE)) {
+            if ((squareBracketStatus == HOVER_TYPE || squareBracketStatus == CLICK_TYPE) && controlMatcher.test(SQUARE_BRACKET_END)) {
                 rollback();
                 return;
             }
 
             // Undo hover/click/color
-            if (c == SQUARE_BRACKET_END && !escape && squareBracketStatus == PREFIX) {
+            if (squareBracketStatus == PREFIX && controlMatcher.test(SQUARE_BRACKET_END)) {
                 String buffer = ctx.squareBracketPrefix.toString();
                 switch (buffer) {
                     case COLOR_TRANSITION: {
@@ -291,7 +294,7 @@ public class EnhancedLegacyTextParser {
 
             if (squareBracketStatus == PREFIX) {
                 String buffer = ctx.squareBracketPrefix.toString();
-                if (c == SQUARE_BRACKET_DELIMITER && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_DELIMITER)) {
                     for (Pair<String, Consumer<ParseContext>> transition : STATUS_TRANSITIONS) {
                         String key = transition.getKey();
                         if (contextCopy != null && (key.equals(CLICK_TRANSITION) || key.equals(HOVER_TRANSITION))) {
@@ -315,7 +318,7 @@ public class EnhancedLegacyTextParser {
 
             boolean hover;
             if ((hover = squareBracketStatus == HOVER_TYPE) || squareBracketStatus == CLICK_TYPE) {
-                if (c == SQUARE_BRACKET_DELIMITER && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_DELIMITER)) {
                     String buffer = ctx.squareBracketContext[0].toString();
 
                     if (hover) {
@@ -347,7 +350,7 @@ public class EnhancedLegacyTextParser {
             }
 
             if ((hover = squareBracketStatus == HOVER_VALUE) || squareBracketStatus == CLICK_VALUE) {
-                if (c == SQUARE_BRACKET_END && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_END)) {
                     String type = ctx.squareBracketContext[0].toString();
                     String valueBuffer = ctx.squareBracketContext[1].toString();
 
@@ -380,7 +383,7 @@ public class EnhancedLegacyTextParser {
             }
 
             if (squareBracketStatus == INSERTION) {
-                if (c == SQUARE_BRACKET_END && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_END)) {
                     String insert = ctx.squareBracketContext[0].toString();
 
                     // Clear up the existing text buffer first
@@ -402,7 +405,7 @@ public class EnhancedLegacyTextParser {
 
             boolean namespaced;
             if ((namespaced = squareBracketStatus == COLOR_NAMESPACED) || squareBracketStatus == COLOR) {
-                if (!namespaced && c == SQUARE_BRACKET_DELIMITER && !escape) {
+                if (!namespaced && controlMatcher.test(SQUARE_BRACKET_DELIMITER)) {
                     String buffer = ctx.squareBracketContext[0].toString();
                     if (!buffer.equals(NAMESPACE_MINECRAFT) && !buffer.equals(NAMESPACE_CSS) && !buffer.equals(NAMESPACE_HEX)) {
                         rollback();
@@ -412,7 +415,7 @@ public class EnhancedLegacyTextParser {
                     ctx.squareBracketStatus = COLOR_NAMESPACED;
                     return;
                 }
-                if (!namespaced && c == HEX && !escape) {
+                if (!namespaced && controlMatcher.test(HEX)) {
                     if (ctx.squareBracketContext[0].length() > 0) {
                         rollback();
                         return;
@@ -423,7 +426,7 @@ public class EnhancedLegacyTextParser {
                     return;
                 }
 
-                if (c == SQUARE_BRACKET_END && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_END)) {
                     String namespace = namespaced ? ctx.squareBracketContext[0].toString() : null;
                     String name = ctx.squareBracketContext[namespaced ? 1 : 0].toString();
 
@@ -442,7 +445,7 @@ public class EnhancedLegacyTextParser {
             }
 
             if (squareBracketStatus == DECORATION) {
-                if (c == SQUARE_BRACKET_END && !escape) {
+                if (controlMatcher.test(SQUARE_BRACKET_END)) {
                     String buffer = ctx.squareBracketContext[0].toString();
                     TextDecoration decoration = DECORATIONS.get(buffer);
                     if (decoration == null) {
@@ -475,13 +478,13 @@ public class EnhancedLegacyTextParser {
             }
 
             throw new IllegalStateException("Unexpected SquareBracketStatus: " + squareBracketStatus);
-        } else if (c == SQUARE_BRACKET_START && !escape) {
+        } else if (controlMatcher.test(SQUARE_BRACKET_START)) {
             bufferForRollback(c);
             ctx.squareBracketStatus = PREFIX;
             return;
         }
 
-        if (c == SQUARE_BRACKET_END && contextCopy != null) {
+        if (contextCopy != null && controlMatcher.test(SQUARE_BRACKET_END)) {
             Component component = out(true);
 
             ctx = contextCopy;
@@ -494,7 +497,7 @@ public class EnhancedLegacyTextParser {
 
         if (ctx.color) {
             bufferForRollback(c);
-            if (c == HEX && !escape && adventureHex) {
+            if (adventureHex && controlMatcher.test(HEX)) {
                 ctx.hexColor = true;
                 return;
             }
@@ -568,12 +571,12 @@ public class EnhancedLegacyTextParser {
             }
             return;
         }
-        if (!ctx.gradientDelimiter && c == colorChar && !escape) {
+        if (!ctx.gradientDelimiter && controlMatcher.test(colorChar)) {
             bufferForRollback(c);
             ctx.color = true;
             return;
         }
-        if (ctx.gradient && ctx.gradientDelimiter && c == GRADIENT_END && !escape) {
+        if (ctx.gradient && ctx.gradientDelimiter && controlMatcher.test(GRADIENT_END)) {
             ctx.gradient = false;
             ctx.rollbackBuffer.setLength(0);
             return;
@@ -586,7 +589,7 @@ public class EnhancedLegacyTextParser {
             }
             return;
         }
-        if (c == GRADIENT_START && !escape) {
+        if (controlMatcher.test(GRADIENT_START)) {
             bufferForRollback(c);
             ctx.gradient = true;
             return;
