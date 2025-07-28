@@ -1,7 +1,7 @@
 # EnhancedLegacyText
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.vankka/enhancedlegacytext?label=release)](https://central.sonatype.com/search?q=g%3Adev.vankka+a%3Aenhancedlegacytext)
-[![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/dev.vankka/enhancedlegacytext?label=dev&server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#view-repositories;snapshots~browsestorage~dev/vankka)
+![Sonatype (Snapshots)](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Fdev%2Fvankka%2Fenhancedlegacytext%2Fmaven-metadata.xml&label=snapshot)
 
 An alternative input format for [Adventure](https://github.com/KyoriPowered/adventure), 
 building on top of the well known [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
