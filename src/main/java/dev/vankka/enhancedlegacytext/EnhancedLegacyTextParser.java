@@ -111,6 +111,7 @@ public class EnhancedLegacyTextParser {
     private boolean legacy;
     private boolean adventureHex;
     private RecursiveReplacement recursiveReplacement;
+    private boolean allPlaceholderOutputIsSafeInput;
     private ParseContext ctx;
     private ParseContext contextCopy;
 
@@ -123,20 +124,22 @@ public class EnhancedLegacyTextParser {
             boolean adventureHex,
             String input,
             List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            RecursiveReplacement recursiveReplacement
+            RecursiveReplacement recursiveReplacement,
+            boolean allPlaceholderOutputIsSafeInput
     ) {
         this.colorChar = colorChar;
         this.colorResets = colorResets;
         this.legacy = legacy;
         this.adventureHex = adventureHex;
         this.recursiveReplacement = recursiveReplacement;
+        this.allPlaceholderOutputIsSafeInput = allPlaceholderOutputIsSafeInput;
 
         ParseContext contextBeforeParse = ctx;
         ParseContext contextCopyBeforeParse = contextCopy;
         this.ctx = new ParseContext();
         this.contextCopy = null;
 
-        processPlaceholders(input, replacements);
+        processPlaceholders(input, replacements, true);
         Component output = out(false);
 
         ctx = contextBeforeParse;
@@ -693,12 +696,12 @@ public class EnhancedLegacyTextParser {
     }
 
     private void appendContent(boolean toRoot) {
-        appendContent(toRoot, false, false);
+        appendContent(toRoot, false);
     }
 
-    private void appendContent(boolean toRoot, boolean noGradients, boolean allowEmpty) {
+    private void appendContent(boolean toRoot, boolean allowEmpty) {
         StringBuilder contentBuilder = ctx.content;
-        List<TextColor> gradientColors = noGradients ? Collections.emptyList() : ctx.gradientColors;
+        List<TextColor> gradientColors = ctx.gradientColors;
         ClickEvent clickEvent = ctx.clickEvent;
         HoverEvent<?> hoverEvent = ctx.hoverEvent;
         String insertion = ctx.insertion;
@@ -741,7 +744,7 @@ public class EnhancedLegacyTextParser {
         ctx.newChild.set(true);
     }
 
-    private void processPlaceholders(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements) {
+    private void processPlaceholders(String input, List<Pair<Pattern, Function<Matcher, Object>>> replacements, boolean safeInput) {
         boolean anyMatch = false;
         String suffix = null;
 
@@ -758,7 +761,7 @@ public class EnhancedLegacyTextParser {
                 String prefix = start == 0 ? null : input.substring(0, start);
                 suffix = end == input.length() ? null : input.substring(end);
                 if (prefix != null) {
-                    processPlaceholders(prefix, replacements);
+                    processPlaceholders(prefix, replacements, safeInput);
                 }
 
                 Object replacement = replacementEntry.getValue().apply(matcher);
@@ -769,7 +772,7 @@ public class EnhancedLegacyTextParser {
                 }
 
                 if (replacement instanceof ComponentLike) {
-                    appendContent(false, false, true);
+                    appendContent(false, true);
                     ctx.builders.add(replacement instanceof BuildableComponent
                                  ? ((BuildableComponent<?, ?>) replacement).toBuilder()
                                  : Component.text().append((ComponentLike) replacement)
@@ -829,7 +832,7 @@ public class EnhancedLegacyTextParser {
                             break;
                     }
 
-                    processPlaceholders(replaceWith, newReplacements);
+                    processPlaceholders(replaceWith, newReplacements, replacement instanceof EnhancedLegacyTextSafeInput);
                     anyMatch = true;
                 }
                 break;
@@ -837,9 +840,15 @@ public class EnhancedLegacyTextParser {
         }
 
         if (!anyMatch) {
-            parse(input);
+            if (safeInput || allPlaceholderOutputIsSafeInput) {
+                parse(input);
+                return;
+            }
+
+            ctx.content.append(input);
+            ctx.newChild.set(false);
         } else if (suffix != null) {
-            processPlaceholders(suffix, replacements);
+            processPlaceholders(suffix, replacements, safeInput);
         }
     }
 

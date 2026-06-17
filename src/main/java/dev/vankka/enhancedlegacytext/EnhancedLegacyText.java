@@ -66,7 +66,19 @@ public interface EnhancedLegacyText {
      * @return the {@link Component} parsed from the input
      */
     default Component parse(String input) {
-        return parse(input, Collections.emptyList(), RecursiveReplacement.NO);
+        return parse(input, Collections.emptyList(), RecursiveReplacement.NO, false);
+    }
+
+    /**
+     * @deprecated see {@link #parse(String, List, RecursiveReplacement, boolean)}
+     */
+    @Deprecated
+    default Component parse(
+            @NotNull String input,
+            @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
+            @NotNull RecursiveReplacement recursiveReplacement
+    ) {
+        return parse(input, replacements, recursiveReplacement, false);
     }
 
     /**
@@ -81,7 +93,8 @@ public interface EnhancedLegacyText {
     Component parse(
             @NotNull String input,
             @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            @NotNull RecursiveReplacement recursiveReplacement
+            @NotNull RecursiveReplacement recursiveReplacement,
+            boolean allPlaceholderOutputIsSafeInput
     );
 
     interface Builder {

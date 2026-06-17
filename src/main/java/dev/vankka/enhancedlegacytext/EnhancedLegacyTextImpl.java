@@ -66,7 +66,8 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
     public @NotNull Component parse(
             @NotNull String input,
             @NotNull List<Pair<Pattern, Function<Matcher, Object>>> replacements,
-            @NotNull RecursiveReplacement recursiveReplacement
+            @NotNull RecursiveReplacement recursiveReplacement,
+            boolean allPlaceholderOutputIsSafeInput
     ) {
         return EnhancedLegacyTextParser.PARSERS.get()
                 .parseToComponent(
@@ -76,7 +77,8 @@ class EnhancedLegacyTextImpl implements EnhancedLegacyText {
                         adventureHex,
                         input,
                         replacements,
-                        recursiveReplacement
+                        recursiveReplacement,
+                        allPlaceholderOutputIsSafeInput
                 );
     }
 

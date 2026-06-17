@@ -53,6 +53,7 @@ public class EnhancedComponentBuilder {
     private final String input;
     private final List<Pair<Pattern, Function<Matcher, Object>>> replacements;
     private RecursiveReplacement recursiveReplacement = RecursiveReplacement.ONLY_FOLLOWING;
+    private boolean allPlaceholderOutputIsSafeInput = false;
 
     protected EnhancedComponentBuilder(EnhancedLegacyText enhancedLegacyText, String input) {
         this.enhancedLegacyText = enhancedLegacyText;
@@ -200,11 +201,30 @@ public class EnhancedComponentBuilder {
     }
 
     /**
+     * Sets if all placeholder outputs should be treated as safe input for additional parsing. The default value is {@code false}.
+     * Returning {@link EnhancedLegacyTextSafeInput} as the placeholder replacement also achieves the same thing, as is recommended over this option.
+     * @param allPlaceholderOutputIsSafeInput if all placeholder replacements should be treated as "safe input"
+     * @return this builder instance - useful for chaining
+     */
+    public EnhancedComponentBuilder setAllPlaceholderOutputIsSafeInput(boolean allPlaceholderOutputIsSafeInput) {
+        this.allPlaceholderOutputIsSafeInput = allPlaceholderOutputIsSafeInput;
+        return this;
+    }
+
+    /**
+     * Gets if all placeholder replacements should be treated as "safe input".
+     * @return {@code true} if all placeholder replacements should be treated as "safe input" for additional parsing
+     */
+    public boolean isAllPlaceholderOutputIsSafeInput() {
+        return allPlaceholderOutputIsSafeInput;
+    }
+
+    /**
      * Creates a {@link Component} from the provided input and replacements.
      * @return a new {@link Component}
      */
     public Component build() {
-        return enhancedLegacyText.parse(input, replacements, recursiveReplacement);
+        return enhancedLegacyText.parse(input, replacements, recursiveReplacement, allPlaceholderOutputIsSafeInput);
     }
 
 }
