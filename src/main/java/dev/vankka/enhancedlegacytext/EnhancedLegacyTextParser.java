@@ -213,16 +213,6 @@ public class EnhancedLegacyTextParser {
         ctx.rollbackBuffer.setLength(0);
     }
 
-    private void parse(String parseIn) {
-        for (char c : parseIn.toCharArray()) {
-            parseCharacter(c);
-        }
-
-        if (ctx.content.length() > 0 && ctx.squareBracketStatus == NONE) {
-            appendContent(false);
-        }
-    }
-
     private void parseCharacter(char c) {
         if (contextCopy != null) {
             contextCopy.rollbackBuffer.append(c);
@@ -754,7 +744,10 @@ public class EnhancedLegacyTextParser {
 
             Matcher matcher = pattern.matcher(input);
             if (matcher.find()) {
-                ctx.content.setLength(0);
+                if (!ctx.newChild.get()) {
+                    // Clear up the existing text buffer first
+                    appendContent(false);
+                }
                 int start = matcher.start();
                 int end = matcher.end();
 
@@ -841,12 +834,16 @@ public class EnhancedLegacyTextParser {
 
         if (!anyMatch) {
             if (safeInput || allPlaceholderOutputIsSafeInput) {
-                parse(input);
+                for (char c : input.toCharArray()) {
+                    parseCharacter(c);
+                }
                 return;
             }
 
-            ctx.content.append(input);
-            ctx.newChild.set(false);
+            for (char c : input.toCharArray()) {
+                ctx.escape = true; // Escape every character (prevents starting & ending any styling)
+                parseCharacter(c);
+            }
         } else if (suffix != null) {
             processPlaceholders(suffix, replacements, safeInput);
         }

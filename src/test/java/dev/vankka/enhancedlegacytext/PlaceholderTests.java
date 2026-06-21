@@ -29,6 +29,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Assertions;
@@ -234,6 +235,71 @@ public class PlaceholderTests {
 
         Component component = EnhancedLegacyText.get().buildComponent("[hover:show_text:hi]%a")
                 .replace("%a", Component.text("test"))
+                .build();
+
+        Assertions.assertEquals(reference, component);
+    }
+
+    @Test
+    public void veryComplexReplacement() {
+        Component reference = Component.text()
+                .append(
+                        Component.text()
+                                .content("[")
+                                .append(Component.text().content("Discord").color(TextColor.color(0x5865F2)))
+                )
+                .append(Component.text().content("] "))
+                .append(
+                        Component.text()
+                                .content("Vankka")
+                                .color(NamedTextColor.GREEN)
+                                .hoverEvent(HoverEvent.showText(
+                                        Component.text()
+                                                .append(
+                                                        Component.text()
+                                                                .content("Username: ] @vankka")
+                                                                .append(
+                                                                        Component.text()
+                                                                                .content(" ")
+                                                                                .append(
+                                                                                        Component.text()
+                                                                                                .content("(Shift+Click to mention)")
+                                                                                                .color(NamedTextColor.GRAY)
+                                                                                                .decorate(TextDecoration.ITALIC)
+                                                                                )
+                                                                )
+                                                )
+                                                .append(Component.text()
+                                                                .content("\nRoles: ").decoration(TextDecoration.ITALIC, false)
+                                                                .append(Component.text("None").color(NamedTextColor.GRAY))
+                                                )
+                                ))
+                                .insertion("@vankka")
+                )
+                .append(
+                        Component.text()
+                                .content(" » ")
+                                .append(Component.text().content("hello world"))
+                )
+                .build();
+
+        Component component = EnhancedLegacyText.get().buildComponent(
+                "[[color:#5865F2]Discord[color]] "
+                        + "[hover:show_text:Username: \\] "
+                        + "@%user_tag% "
+                        + "[italics:on][color:gray](Shift+Click to mention)[color][italics:off]"
+                        + "\nRoles: %user_selected_roles:', '|text:'[color:gray][italics:on]None[color][italics]'%]"
+                        + "[insert:@%user_tag%]%user_color%%user_effective_name%[color][insert][hover]"
+                        + "%message_reply% "
+                        + "» "
+                        + "%message%%message_attachments%")
+                .replace("%user_tag%", "vankka")
+                .replace("%user_selected_roles:', '|text:'[color:gray][italics:on]None[color][italics]'%", Component.text().color(NamedTextColor.GRAY).content("None").build())
+                .replace("%user_color%", NamedTextColor.GREEN)
+                .replace("%user_effective_name%", "Vankka")
+                .replace("%message_reply%", Component.text())
+                .replace("%message%", Component.text("hello world"))
+                .replace("%message_attachments%", Component.text())
                 .build();
 
         Assertions.assertEquals(reference, component);
