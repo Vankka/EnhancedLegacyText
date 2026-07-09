@@ -758,11 +758,12 @@ public class EnhancedLegacyTextParser {
                     replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
                 }
 
-                if (replacement instanceof ComponentLike) {
+                if (replacement instanceof ComponentLike componentLike) {
                     appendContent(false, true);
-                    ctx.builders.add(replacement instanceof ComponentBuilder<?,?>
-                                 ? ((ComponentBuilder<?, ?>) replacement)
-                                 : Component.text().append((ComponentLike) replacement)
+
+                    ctx.builders.add(componentLike instanceof ComponentBuilder<?,?>
+                                 ? ((ComponentBuilder<?, ?>) componentLike)
+                                 : componentLike.asComponent().toBuilder()
                     );
                     appendContent(true);
 

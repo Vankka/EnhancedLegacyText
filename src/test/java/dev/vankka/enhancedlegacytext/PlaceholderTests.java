@@ -126,15 +126,12 @@ public class PlaceholderTests {
 
     @Test
     public void builderPlaceholderTest() {
-        TextComponent.Builder child = Component.text().content("test");
+        TextComponent.Builder builder = Component.text().content("test");
 
-        Component reference =
-                Component.text()
-                        .append(child)
-                        .build();
+        Component reference = builder.build();
 
         Component component = EnhancedLegacyText.get().buildComponent("%builder%")
-                .replace("%builder%", child).build();
+                .replace("%builder%", builder).build();
 
         Assertions.assertEquals(reference, component);
     }
