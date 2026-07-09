@@ -38,7 +38,7 @@ import java.util.Map;
 class Colors {
 
     static final String HEX_CHARACTERS = "1234567890abcdef";
-    static final Map<Character, TextFormat> LEGACY = new HashMap<>(22);
+    static final Map<Character, Object> LEGACY = new HashMap<>(22);
     static final Reset RESET = new Reset();
     static final Map<String, TextColor> CSS = new HashMap<>(148); // Level 4
 
@@ -217,5 +217,5 @@ class Colors {
         CSS.put("yellowgreen", TextColor.color(0x9acd32));
     }
 
-    private static class Reset implements TextFormat {}
+    private static class Reset {}
 }

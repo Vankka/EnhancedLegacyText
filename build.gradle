@@ -8,14 +8,14 @@ plugins {
 }
 
 group 'dev.vankka'
-version '2.1.2-SNAPSHOT'
+version '3.0.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    api 'net.kyori:adventure-api:4.9.2'
+    api 'net.kyori:adventure-api:5.2.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
@@ -27,8 +27,8 @@ test {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     withJavadocJar()
     withSourcesJar()
 }

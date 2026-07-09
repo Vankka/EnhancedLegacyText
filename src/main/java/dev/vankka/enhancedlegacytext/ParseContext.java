@@ -55,7 +55,7 @@ class ParseContext {
     final StringBuilder content = new StringBuilder();
 
     String insertion;
-    ClickEvent clickEvent;
+    ClickEvent<ClickEvent.Payload.Text> clickEvent;
     HoverEvent<?> hoverEvent;
 
     final TextComponent.Builder rootBuilder = Component.text();

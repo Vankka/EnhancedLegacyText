@@ -76,7 +76,7 @@ public class EnhancedLegacyTextParser {
     private static final Map<String, TextDecoration> DECORATIONS = new HashMap<>(7);
 
     // Click events
-    private static final List<Pair<String, ClickEvent.Action>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
+    private static final List<Pair<String, ClickEvent.Action<ClickEvent.Payload.Text>>> ACCEPTABLE_CLICK_EVENTS = new ArrayList<>();
 
     static {
         STATUS_TRANSITIONS.add(new Pair<>(COLOR_TRANSITION, ctx -> ctx.squareBracketStatus = COLOR));
@@ -97,13 +97,10 @@ public class EnhancedLegacyTextParser {
             }));
         }
 
-        for (ClickEvent.Action value : ClickEvent.Action.values()) {
-            if (value == ClickEvent.Action.OPEN_FILE) {
-                // Client side only
-                continue;
-            }
-            ACCEPTABLE_CLICK_EVENTS.add(new Pair<>(value.name().toLowerCase(), value));
-        }
+        ACCEPTABLE_CLICK_EVENTS.add(new Pair<>("open_url", ClickEvent.Action.OPEN_URL));
+        ACCEPTABLE_CLICK_EVENTS.add(new Pair<>("run_command", ClickEvent.Action.RUN_COMMAND));
+        ACCEPTABLE_CLICK_EVENTS.add(new Pair<>("suggest_command", ClickEvent.Action.SUGGEST_COMMAND));
+        ACCEPTABLE_CLICK_EVENTS.add(new Pair<>("copy_to_clipboard", ClickEvent.Action.COPY_TO_CLIPBOARD));
     }
 
     private char colorChar;
@@ -163,7 +160,7 @@ public class EnhancedLegacyTextParser {
 
         // Simplify the output component if possible
         List<Component> rootChildren = ctx.rootBuilder.children();
-        return rootChildren.size() == 1 ? rootChildren.get(0) : ctx.rootBuilder.build();
+        return rootChildren.size() == 1 ? rootChildren.getFirst() : ctx.rootBuilder.build();
     }
 
     private void bufferForRollback(char c) {
@@ -176,7 +173,7 @@ public class EnhancedLegacyTextParser {
         }
         reset();
 
-        if (ctx.rollbackBuffer.length() == 0) {
+        if (ctx.rollbackBuffer.isEmpty()) {
             return;
         }
 
@@ -325,7 +322,7 @@ public class EnhancedLegacyTextParser {
                             return;
                         }
                     } else /* click */ {
-                        for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
+                        for (Pair<String, ClickEvent.Action<ClickEvent.Payload.Text>> event : ACCEPTABLE_CLICK_EVENTS) {
                             String match = event.getKey();
                             if (match.equals(buffer)) {
                                 ctx.squareBracketStatus = CLICK_VALUE;
@@ -350,8 +347,8 @@ public class EnhancedLegacyTextParser {
                     if (hover) {
                         throw new IllegalStateException("Impossible hover type: " + type);
                     } else /* click */ {
-                        ClickEvent.Action action = null;
-                        for (Pair<String, ClickEvent.Action> event : ACCEPTABLE_CLICK_EVENTS) {
+                        ClickEvent.Action<ClickEvent.Payload.Text> action = null;
+                        for (Pair<String, ClickEvent.Action<ClickEvent.Payload.Text>> event : ACCEPTABLE_CLICK_EVENTS) {
                             if (event.getKey().equals(type)) {
                                 action = event.getValue();
                                 break;
@@ -363,8 +360,7 @@ public class EnhancedLegacyTextParser {
 
                         // Clear up the existing text buffer first
                         clearExistingContent();
-
-                        ctx.clickEvent = ClickEvent.clickEvent(action, valueBuffer);
+                        ctx.clickEvent = ClickEvent.clickEvent(action, ClickEvent.Payload.string(valueBuffer));
                     }
 
                     resetPrefix();
@@ -409,7 +405,7 @@ public class EnhancedLegacyTextParser {
                     return;
                 }
                 if (!namespaced && controlMatcher.test(HEX)) {
-                    if (ctx.squareBracketContext[0].length() > 0) {
+                    if (!ctx.squareBracketContext[0].isEmpty()) {
                         rollback();
                         return;
                     }
@@ -531,7 +527,7 @@ public class EnhancedLegacyTextParser {
                     return;
                 }
 
-                TextFormat legacy = Colors.LEGACY.get(c);
+                Object legacy = Colors.LEGACY.get(c);
                 if (legacy == null || (ctx.gradient && !(legacy instanceof TextColor))) {
                     rollback();
                     return;
@@ -542,8 +538,7 @@ public class EnhancedLegacyTextParser {
                     ctx.gradientColors.clear();
                     ctx.clickEvent = null;
                     ctx.hoverEvent = null;
-                } else if (legacy instanceof TextColor) {
-                    TextColor color = (TextColor) legacy;
+                } else if (legacy instanceof TextColor color) {
                     if (ctx.gradient) {
                         ctx.gradientColors.add(color);
                         ctx.gradientDelimiter = true;
@@ -692,11 +687,11 @@ public class EnhancedLegacyTextParser {
     private void appendContent(boolean toRoot, boolean allowEmpty) {
         StringBuilder contentBuilder = ctx.content;
         List<TextColor> gradientColors = ctx.gradientColors;
-        ClickEvent clickEvent = ctx.clickEvent;
+        ClickEvent<ClickEvent.Payload.Text> clickEvent = ctx.clickEvent;
         HoverEvent<?> hoverEvent = ctx.hoverEvent;
         String insertion = ctx.insertion;
 
-        if (gradientColors.size() > 1 && contentBuilder.length() > 0) {
+        if (gradientColors.size() > 1 && !contentBuilder.isEmpty()) {
             addIfNotEmpty(ctx.current, ctx.builders);
             ctx.current = Component.text();
 
@@ -758,16 +753,15 @@ public class EnhancedLegacyTextParser {
                 }
 
                 Object replacement = replacementEntry.getValue().apply(matcher);
-                if (replacement instanceof Color) {
+                if (replacement instanceof Color color) {
                     // Convert java.awt.Color to TextColor
-                    Color color = (Color) replacement;
                     replacement = TextColor.color(color.getRed(), color.getGreen(), color.getBlue());
                 }
 
                 if (replacement instanceof ComponentLike) {
                     appendContent(false, true);
-                    ctx.builders.add(replacement instanceof BuildableComponent
-                                 ? ((BuildableComponent<?, ?>) replacement).toBuilder()
+                    ctx.builders.add(replacement instanceof ComponentBuilder<?,?>
+                                 ? ((ComponentBuilder<?, ?>) replacement)
                                  : Component.text().append((ComponentLike) replacement)
                     );
                     appendContent(true);
@@ -780,8 +774,7 @@ public class EnhancedLegacyTextParser {
 
                     if (replacement instanceof TextColor || replacement instanceof Style) {
                         TextColor color;
-                        if (replacement instanceof Style) {
-                            Style style = (Style) replacement;
+                        if (replacement instanceof Style style) {
                             ctx.current.style(style);
                             color = style.color();
                         } else {
