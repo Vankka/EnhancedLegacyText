@@ -802,10 +802,6 @@ public class EnhancedLegacyTextParser {
 
                     List<Pair<Pattern, Function<Matcher, Object>>> newReplacements;
                     switch (recursiveReplacement) {
-                        default:
-                        case NO:
-                            newReplacements = Collections.emptyList();
-                            break;
                         case YES:
                             newReplacements = replacements;
                             break;
@@ -816,6 +812,10 @@ public class EnhancedLegacyTextParser {
                             } else {
                                 newReplacements = replacements.subList(i + 1, size);
                             }
+                            break;
+                        case NO:
+                        default:
+                            newReplacements = Collections.emptyList();
                             break;
                     }
 
